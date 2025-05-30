@@ -53,7 +53,7 @@ jobs:
           NO_SHFMT_CHECK: 1
         
       - name: Delivering Package
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: neko-${{ matrix.release }}_${{ matrix.arch }}
           path: |
@@ -68,7 +68,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download temporary artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         
       - name: Moving artifact to releases
         shell: bash
