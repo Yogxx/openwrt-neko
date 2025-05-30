@@ -9,7 +9,7 @@ on:
       version:
         description: 'Neko version'
         required: true
-        default: '1.2.3-beta'
+        default: '1.2.5-beta'
         type: string
       changelog:
         description: 'Changelog'
@@ -22,18 +22,18 @@ jobs:
     permissions:
       contents: write
     name: Build Neko
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         release:
-          - 23.05.4
+          - 24.10.1
         arch:
-          - x86_64
+          - aarch64_generic
           
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: dev
 
@@ -61,7 +61,7 @@ jobs:
           NO_SHFMT_CHECK: 1
         
       - name: Delivering Package
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: neko-${{ matrix.release }}_${{ matrix.arch }}
           path: ${{ github.workspace }}/artifacts/bin/packages/${{ matrix.arch }}/action/luci-app*
@@ -74,16 +74,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download temporary artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         
       - name: Moving artifact to releases
         shell: bash
         run: |
           mkdir ./release
-          cp -rf ./neko-23.05.4_x86_64/luci-app* ./release/luci-app-neko_${{ inputs.version }}_dev_all.ipk
+          cp -rf ./neko-24.10.1_aarch64_generic/luci-app* ./release/luci-app-neko_${{ inputs.version }}_dev_all.ipk
         
       - name: Upload release asset
-        uses: svenstaro/upload-release-action@v2
+        uses: svenstaro/upload-release-action@v4
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: ./release/*
@@ -103,4 +103,4 @@ jobs:
               - nosignals.yaml : 2 rules can added (Block Host, Game) - Secret : ` telekulo `
             ### Dependency Requirement
             - ` bash, kmod-tun, php, php-cgi ` (install PHP Manually before install Neko)
-            - Openwrt 23: ` php8 php8-cgi nftables mihomo` 
+            - Openwrt 24: ` php8 php8-cgi nftables mihomo` 
