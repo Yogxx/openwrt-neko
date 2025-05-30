@@ -81,7 +81,7 @@ jobs:
           cp -rf ./neko-24.10.1_aarch64_generic/luci-app* ./release/luci-app-neko_${{ inputs.version }}_dev_all.ipk
         
       - name: Upload release asset
-        uses: svenstaro/upload-release-action@v4
+        uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: ./release/*
