@@ -31,7 +31,7 @@ PKG_RELEASE:=1
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/lux5am/sing-box/tar.gz/v$(PKG_VERSION)?
-PKG_HASH:=402b618148b58f5ff6c1bee4f4fdcf7cdcb88a2df6a8bd682ea742a89b5be9ec
+PKG_HASH:=b79281cbe1a9585bf53855ebc9513ccf2fe772983c4926554389ba0f5598da3e
 
 PKG_LICENSE:=MIT
 PKG_MAINTAINER:=BobbyUnknown
