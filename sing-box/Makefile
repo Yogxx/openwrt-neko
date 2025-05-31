@@ -26,11 +26,11 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=sing-box
-PKG_VERSION:=1.10.7
+PKG_VERSION:=1.11.10
 PKG_RELEASE:=1
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
-PKG_SOURCE_URL:=https://codeload.github.com/SagerNet/sing-box/tar.gz/v$(PKG_VERSION)?
+PKG_SOURCE_URL:=https://codeload.github.com/lux5am/sing-box/tar.gz/v$(PKG_VERSION)?
 PKG_HASH:=402b618148b58f5ff6c1bee4f4fdcf7cdcb88a2df6a8bd682ea742a89b5be9ec
 
 PKG_LICENSE:=MIT
@@ -51,7 +51,7 @@ define Package/$(PKG_NAME)
   SECTION:=net
   CATEGORY:=Network
   TITLE:=The universal proxy platform
-  URL:=https://github.com/SagerNet/sing-box
+  URL:=https://github.com/lux5am/sing-box
   DEPENDS:=$(GO_ARCH_DEPENDS) +ca-bundle +ip-full +kmod-tun
   USERID:=sing-box=5566:sing-box=5566
 endef
