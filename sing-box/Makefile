@@ -26,12 +26,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=sing-box
-PKG_VERSION:=1.11.10
+PKG_VERSION:=1.11.11
 PKG_RELEASE:=1
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
-PKG_SOURCE_URL:=https://codeload.github.com/lux5am/sing-box/tar.gz/v$(PKG_VERSION)?
-PKG_HASH:=b79281cbe1a9585bf53855ebc9513ccf2fe772983c4926554389ba0f5598da3e
+PKG_SOURCE_URL:=https://codeload.github.com/SagerNet/sing-box/tar.gz/v$(PKG_VERSION)?
+PKG_HASH:=31cc321efaa2fe9f3e3be9b065354552378f5a1dac49f6a24ce7e48d8a6c8979
 
 PKG_LICENSE:=MIT
 PKG_MAINTAINER:=BobbyUnknown
@@ -40,7 +40,7 @@ PKG_BUILD_DEPENDS:=golang/host
 PKG_BUILD_PARALLEL:=1
 PKG_BUILD_FLAGS:=no-mips16
 
-GO_PKG:=github.com/lux5am/sing-box
+GO_PKG:=github.com/SagerNet/sing-box
 GO_PKG_BUILD_PKG:=$(GO_PKG)/cmd/sing-box
 GO_PKG_LDFLAGS_X:=$(GO_PKG)/constant.Version=v$(PKG_VERSION)
 
@@ -51,7 +51,7 @@ define Package/$(PKG_NAME)
   SECTION:=net
   CATEGORY:=Network
   TITLE:=The universal proxy platform
-  URL:=https://github.com/lux5am/sing-box
+  URL:=https://github.com/SagerNet/sing-box
   DEPENDS:=$(GO_ARCH_DEPENDS) +ca-bundle +ip-full +kmod-tun
   USERID:=sing-box=5566:sing-box=5566
 endef
