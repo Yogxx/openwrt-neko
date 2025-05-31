@@ -9,7 +9,7 @@ on:
       version:
         description: 'Neko version'
         required: true
-        default: '1.2.5-beta'
+        default: '1.2.5-mod'
         type: string
       changelog:
         description: 'Changelog'
