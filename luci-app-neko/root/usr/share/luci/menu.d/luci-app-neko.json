@@ -18,17 +18,17 @@
 		}
 	},
 
-	"admin/services/neko/yacd": {
-		"title": "YACD",
+	"admin/services/neko/advancededitor": {
+		"title": "ADVANCED EDITOR",
 		"order": 2,
 		"action": {
 			"type": "view",
-			"path": "neko/yacd"
+			"path": "neko/advancededitor"
 		}
 	},
 
 	"admin/services/neko/manager": {
-		"title": "FILEMANAGER",
+		"title": "MANAGER",
 		"order": 3,
 		"action": {
 			"type": "view",
