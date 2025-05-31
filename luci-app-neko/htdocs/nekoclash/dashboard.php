@@ -69,7 +69,7 @@ $config = get_dashboard_config($core_mode, $selected_config);
 $port = $config['port'];
 $secret = $config['secret'];
 
-$yacd_link = $_SERVER['HTTP_HOST'] . ":" . $port . "/ui/meta/?hostname=" . $_SERVER['HTTP_HOST'] . "&port=" . $port . "&secret=" . $secret;
+$yacd_link = $_SERVER['HTTP_HOST'] . ":" . $port . "/ui/yacd/?hostname=" . $_SERVER['HTTP_HOST'] . "&port=" . $port . "&secret=" . $secret;
 $metacubexd_link = $_SERVER['HTTP_HOST'] . ":" . $port . "/ui/metacubexd/?hostname=" . $_SERVER['HTTP_HOST'] . "&port=" . $port . "&secret=" . $secret;
 
 ?>
@@ -90,16 +90,16 @@ $metacubexd_link = $_SERVER['HTTP_HOST'] . ":" . $port . "/ui/metacubexd/?hostna
                         <?php if ($core_mode == 'mihomo'): ?>
                             <a class="btn btn-outline-primary" target="_blank" href="http://<?=$yacd_link ?>">
                                 <i data-feather="external-link" class="feather-sm me-2"></i>
-                                META - YACD
+                                YACD
                             </a>
                             <a class="btn btn-outline-primary" target="_blank" href="http://<?=$metacubexd_link ?>">
                                 <i data-feather="external-link" class="feather-sm me-2"></i>
-                                METACUBEXD
+                                META
                             </a>
                         <?php else: ?>
                             <a class="btn btn-outline-primary" target="_blank" href="http://<?=$yacd_link ?>">
                                 <i data-feather="external-link" class="feather-sm me-2"></i>
-                                SINGBOX - YACD
+                                YACD
                             </a>
                         <?php endif; ?>
                     </div>
