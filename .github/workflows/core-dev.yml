@@ -14,7 +14,7 @@ on:
       singbox_version:
         description: 'Sing-box version'
         required: true
-        default: '1.11.10'
+        default: '1.11.11'
         type: string
 jobs: 
   build_ipk:
@@ -90,7 +90,7 @@ jobs:
             - Wiki : [wiki.metacubex.one](https://wiki.metacubex.one)
             
             ### Sing-box Kernel ${{ inputs.singbox_version }}
-            - Changelog : [v${{ inputs.singbox_version }}](https://github.com/lux5am/sing-box/releases/tag/v${{ inputs.singbox_version }})
+            - Changelog : [v${{ inputs.singbox_version }}](https://github.com/SagerNet/sing-box/releases/tag/v${{ inputs.singbox_version }})
             - Wiki : [sing-box.sagernet.org](https://sing-box.sagernet.org)
             
             ### Dependency Requirement
