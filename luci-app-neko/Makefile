@@ -57,11 +57,6 @@ endef
 define Package/$(PKG_NAME)/postinst
 #!/bin/sh
 	if [ -f "/tmp/neko/neko.bak" ]; then
-		cp -rf "/tmp/neko/geoip.metadb" "/etc/neko/geoip.metadb"
-		cp -rf "/tmp/neko/geosite.db" "/etc/neko/geosite.db"
-		cp -rf "/tmp/neko/geoip.dat" "/etc/neko/geoip.dat"
-		cp -rf "/tmp/neko/geosite.dat" "/etc/neko/geosite.dat"
-
 		cp -rf /tmp/neko/config/* "/etc/neko/config/"
 		cp -rf /tmp/neko/proxy_provider/* "/etc/neko/proxy_provider/"
 		cp -rf /tmp/neko/rule_provider/* "/etc/neko/rule_provider/"
