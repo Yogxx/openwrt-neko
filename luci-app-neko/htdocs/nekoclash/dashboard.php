@@ -69,8 +69,8 @@ $config = get_dashboard_config($core_mode, $selected_config);
 $port = $config['port'];
 $secret = $config['secret'];
 
+$yacd_link = $_SERVER['HTTP_HOST'] . ":" . $port . "/ui/yacd/?hostname=" . $_SERVER['HTTP_HOST'] . "&port=" . $port . "&secret=" . $secret;
 $zashboard_link = $_SERVER['HTTP_HOST'] . ":" . $port . "/ui/zashboard/?hostname=" . $_SERVER['HTTP_HOST'] . "&port=" . $port . "&secret=" . $secret;
-$metacubex_link = $_SERVER['HTTP_HOST'] . ":" . $port . "/ui/metacubex/?hostname=" . $_SERVER['HTTP_HOST'] . "&port=" . $port . "&secret=" . $secret;
 
 ?>
 <?php 
@@ -88,18 +88,18 @@ $metacubex_link = $_SERVER['HTTP_HOST'] . ":" . $port . "/ui/metacubex/?hostname
                 <div class="mb-4">
                     <div class="d-grid gap-2 d-flex justify-content-center">
                         <?php if ($core_mode == 'mihomo'): ?>
+                            <a class="btn btn-outline-primary" target="_blank" href="http://<?=$yacd_link ?>">
+                                <i data-feather="external-link" class="feather-sm me-2"></i>
+                                YACD-PANEL
+                            </a>
                             <a class="btn btn-outline-primary" target="_blank" href="http://<?=$zashboard_link ?>">
                                 <i data-feather="external-link" class="feather-sm me-2"></i>
                                 ZASHBOARD
                             </a>
-                            <a class="btn btn-outline-primary" target="_blank" href="http://<?=$metacubex_link ?>">
-                                <i data-feather="external-link" class="feather-sm me-2"></i>
-                                METACUBEX
-                            </a>
                         <?php else: ?>
-                            <a class="btn btn-outline-primary" target="_blank" href="http://<?=$zashboard_link ?>">
+                            <a class="btn btn-outline-primary" target="_blank" href="http://<?=$yacd_link ?>">
                                 <i data-feather="external-link" class="feather-sm me-2"></i>
-                                SINGBOX - YACD
+                                SINGBOX-YACD
                             </a>
                         <?php endif; ?>
                     </div>
@@ -111,7 +111,7 @@ $metacubex_link = $_SERVER['HTTP_HOST'] . ":" . $port . "/ui/metacubex/?hostname
                         class="border rounded w-100" 
                         height="700" 
                         src="http://<?=$zashboard_link ?>" 
-                        title="yacd" 
+                        title="zashboard" 
                         allowfullscreen>
                     </iframe>
                 </div>
