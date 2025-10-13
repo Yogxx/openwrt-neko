@@ -62,18 +62,6 @@ logs() {
     fi
 }
 
-neko_checknewver(){
-    new_version=$(curl -m 5 -f -s https://raw.githubusercontent.com/nosignals/openwrt-neko/main/luci-app-neko/Makefile | grep PKG_VERSION: | cut -d= -f2)
-    if [ $neko_version = $new_version ] || [ -z $new_version ]; then
-        strversion="- Latest"
-    else
-        strversion="- New Version v.$new_version"
-        if [[ $1 == "log" ]]; then
-            logs "New Version v.$new_version"
-        fi
-    fi
-}
-
 check_depedency() {
     opw_version=`cat /etc/os-release | grep VERSION_ID | cut -d\" -f 2`
     logs "- Check Depedencies : $opw_version"
@@ -328,8 +316,7 @@ while getopts ":skrpcvhbx" signal ; do
             ;;
         v)
             neko_ver
-            neko_checknewver
-            echo "v.$neko_version $strversion"
+            echo "v.$neko_version"
             ;;
         h)
             echo "Neko"
