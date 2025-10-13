@@ -18,9 +18,18 @@
 		}
 	},
 
-	"admin/services/neko/yacd": {
-		"title": "YACD",
+	"admin/services/neko/configeditor": {
+		"title": "EDITOR",
 		"order": 2,
+		"action": {
+			"type": "view",
+			"path": "neko/configeditor"
+		}
+	},
+
+	"admin/services/neko/yacd": {
+		"title": "ZASHBOARD",
+		"order": 3,
 		"action": {
 			"type": "view",
 			"path": "neko/yacd"
@@ -28,8 +37,8 @@
 	},
 
 	"admin/services/neko/manager": {
-		"title": "FILEMANAGER",
-		"order": 3,
+		"title": "MANAGER",
+		"order": 4,
 		"action": {
 			"type": "view",
 			"path": "neko/manager"
