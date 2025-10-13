@@ -30,6 +30,7 @@ jobs:
           - 24.10.3
         arch:
           - x86_64
+          - aarch64_generic
           
     steps:
       - name: Checkout Repository
