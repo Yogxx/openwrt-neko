@@ -9,12 +9,12 @@ on:
       mihomo_version:
         description: 'Mihomo version'
         required: true
-        default: '1.19.1'
+        default: '1.19.14'
         type: string
       singbox_version:
         description: 'Sing-box version'
         required: true
-        default: '1.10.7'
+        default: '1.12.9'
         type: string
 jobs: 
   build_ipk:
@@ -26,17 +26,14 @@ jobs:
       fail-fast: false
       matrix:
         release:
-          - 23.05.4
+          - 24.10.3
         arch:
           - x86_64
-          - arm_cortex-a7_neon-vfpv4
-          - aarch64_cortex-a53
-          - aarch64_cortex-a72
           - aarch64_generic
           
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: dev
         
@@ -57,7 +54,7 @@ jobs:
           NO_SHFMT_CHECK: 1
         
       - name: Delivering Package
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: neko-${{ matrix.release }}_${{ matrix.arch }}
           path: |
@@ -72,22 +69,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download temporary artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         
       - name: Moving artifact to releases
         shell: bash
         run: |
           mkdir ./release
-          cp -rf ./neko-23.05.4_x86_64/mihomo* ./release/
-          cp -rf ./neko-23.05.4_x86_64/sing-box* ./release/
-          cp -rf ./neko-23.05.4_arm_cortex-a7_neon-vfpv4/mihomo* ./release/
-          cp -rf ./neko-23.05.4_arm_cortex-a7_neon-vfpv4/sing-box* ./release/
-          cp -rf ./neko-23.05.4_aarch64_generic/mihomo* ./release/
-          cp -rf ./neko-23.05.4_aarch64_generic/sing-box* ./release/
-          cp -rf ./neko-23.05.4_aarch64_cortex-a53/mihomo* ./release/
-          cp -rf ./neko-23.05.4_aarch64_cortex-a53/sing-box* ./release/
-          cp -rf ./neko-23.05.4_aarch64_cortex-a72/mihomo* ./release/
-          cp -rf ./neko-23.05.4_aarch64_cortex-a72/sing-box* ./release/
+          cp -rf ./neko-*_*/*mihomo* ./release/ || true
+          cp -rf ./neko-*_*/*sing-box* ./release/ || true
         
       - name: Upload release asset
         uses: svenstaro/upload-release-action@v2
@@ -96,6 +85,7 @@ jobs:
           file: ./release/*
           overwrite: true
           tag: core_${{ inputs.mihomo_version }}_${{ inputs.singbox_version }}
+          prerelease: true
           file_glob: true
           body: |
             # NEKO CORE PACKAGES
