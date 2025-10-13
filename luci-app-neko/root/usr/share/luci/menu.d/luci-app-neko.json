@@ -27,12 +27,12 @@
 		}
 	},
 
-	"admin/services/neko/zashboard": {
-		"title": "ZASHBOARD",
+	"admin/services/neko/yacd": {
+		"title": "YACD",
 		"order": 3,
 		"action": {
 			"type": "view",
-			"path": "neko/zashboard"
+			"path": "neko/yacd"
 		}
 	},
 
