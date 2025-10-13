@@ -28,12 +28,11 @@ if(isset($_GET['data'])){
     else if($dt == 'neko_ver') {
         echo exec("$neko_dir/core/neko -v");
     }
-    else if($dt == 'core_ver') {
-        if ($core_mode === 'mihomo') {
-            echo exec("$core_bin -v | head -1 | awk '{print $5 \" \" $3}'");
-        } elseif ($core_mode === 'singbox') {
-            echo exec("$core_bin version");
-        }
+    else if($dt == 'mihomo_ver') {
+        echo exec("/usr/bin/mihomo -v | head -1 | awk '{print $5 \" \" $3}'");
+    }
+    else if($dt == 'singbox_ver') {
+        echo exec("/usr/bin/sing-box version | grep 'sing-box version' | awk '{print $3}'");
     }
     else if($dt == 'url_dash'){
         header("Content-type: application/json; charset=utf-8");
