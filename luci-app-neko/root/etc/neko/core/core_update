@@ -1,0 +1,209 @@
+#!/bin/bash
+
+#
+# Copyright (C) 2024 Nosignal <https://github.com/nosignals>
+# 
+# Contributors:
+# - bobbyunknown <https://github.com/bobbyunknown>
+#
+# https://opensource.org/license/mit
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+
+
+neko_log="/etc/neko/tmp/neko_update_log.txt"
+
+exec 3>&1
+
+write_log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> $neko_log
+}
+
+echo "" > $neko_log
+
+get_arch() {
+    local arch=$(uname -m)
+    case $arch in
+        aarch64)
+            echo "arm64"
+            ;;
+        x86_64)
+            echo "amd64"
+            ;;
+        armv7l)
+            echo "armv7"
+            ;;
+        *)
+            echo "unsupported"
+            exit 1
+            ;;
+    esac
+}
+
+ARCH=$(get_arch)
+
+list_mihomo_versions() {
+    curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases | grep "tag_name" | cut -d'"' -f4 | sed 's/v//'
+}
+
+list_singbox_versions() {
+    curl -s https://api.github.com/repos/lux5am/sing-box/releases | grep "tag_name" | cut -d'"' -f4 | sed 's/v//'
+}
+
+setup_mihomo() {
+    version=$1
+    temp_dir="/tmp/neko_core"
+    core_dir="/usr/bin"
+    
+    mkdir -p $temp_dir
+    mkdir -p $core_dir
+    
+    cd $temp_dir || exit 1
+    
+    write_log "Getting release info..."
+    release_file=$(curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases/tags/v${version} | grep "browser_download_url.*linux-${ARCH}.*gz\"" | cut -d'"' -f4 | head -n1)
+    
+    if [ -z "$release_file" ]; then
+        write_log "Failed to find release for version v${version}"
+        exit 1
+    fi
+    
+    write_log "Downloading Mihomo v$version..."
+    curl -LO "$release_file"
+    
+    if [ $? -eq 0 ]; then
+        downloaded_file=$(ls | grep "mihomo-linux.*gz")
+        
+        gzip -d "$downloaded_file"
+        if [ $? -eq 0 ]; then
+            extracted_file=$(ls | grep "mihomo-linux.*" | grep -v "gz")
+            chmod +x "$extracted_file"
+            
+            [ -f $core_dir/mihomo ] && rm $core_dir/mihomo
+            
+            mv "$extracted_file" $core_dir/mihomo
+            write_log "Successfully downloaded mihomo v${version}"
+            write_log "Restarting neko service..."
+            /etc/init.d/neko restart
+            write_log "mihomo version: $(/usr/bin/mihomo -v | head -1 | awk '{print $5 " " $3}')"
+        else
+            write_log "Failed to extract mihomo"
+            exit 1
+        fi
+    else
+        write_log "Failed to download mihomo"
+        exit 1
+    fi
+}
+
+setup_singbox() {
+    version=$1
+    temp_dir="/tmp/neko_core"
+    core_dir="/usr/bin"
+    
+    mkdir -p $temp_dir
+    mkdir -p $core_dir
+    
+    cd $temp_dir || exit 1
+    
+    write_log "Downloading Sing-box v$version..."
+    curl -LO "https://github.com/lux5am/sing-box/releases/download/v${version}/sing-box-${version}-linux-${ARCH}.tar.gz"
+    
+    if [ $? -eq 0 ]; then
+        tar xzf sing-box-${version}-linux-${ARCH}.tar.gz --strip-components=1 "sing-box-${version}-linux-${ARCH}/sing-box"
+        if [ $? -eq 0 ]; then
+            chmod +x sing-box
+            
+            [ -f $core_dir/sing-box ] && rm $core_dir/sing-box
+            
+            mv sing-box $core_dir/sing-box
+            write_log "Successfully downloaded sing-box v${version}"
+            write_log "Restarting neko service..."
+            /etc/init.d/neko restart
+            write_log "sing-box version: $(/usr/bin/sing-box version | grep 'sing-box version' | awk '{print $3}')"
+        else
+            write_log "Failed to extract sing-box"
+            exit 1
+        fi
+    else
+        write_log "Failed to download sing-box"
+        exit 1
+    fi
+}
+
+if [ "$1" = "list_mihomo_versions" ]; then
+    list_mihomo_versions
+    exit 0
+elif [ "$1" = "list_singbox_versions" ]; then
+    list_singbox_versions
+    exit 0
+fi
+
+exec 1>&3
+echo "System Architecture: $(uname -m) (${ARCH})"
+echo
+echo "Select core to download:"
+echo "1) Mihomo"
+echo "2) Sing-box"
+read -p "Enter choice [1-2]: " choice
+
+case $choice in
+    1)
+        echo "Available Mihomo versions:"
+        versions=($(list_mihomo_versions))
+        for i in "${!versions[@]}"; do
+            echo "$((i+1))) ${versions[$i]}"
+        done
+        read -p "Select version number: " ver_choice
+        
+        exec 1> >(while read -r line; do echo "[$(date '+%Y-%m-%d %H:%M:%S')] $line" >> "$neko_log"; echo "$line"; done)
+        
+        if [ $ver_choice -gt 0 ] && [ $ver_choice -le ${#versions[@]} ]; then
+            setup_mihomo "${versions[$((ver_choice-1))]}"
+        else
+            write_log "Invalid version selected"
+            exit 1
+        fi
+        ;;
+    2)
+        echo "Available Sing-box versions:"
+        versions=($(list_singbox_versions))
+        for i in "${!versions[@]}"; do
+            echo "$((i+1))) ${versions[$i]}"
+        done
+        read -p "Select version number: " ver_choice
+        
+        exec 1> >(while read -r line; do echo "[$(date '+%Y-%m-%d %H:%M:%S')] $line" >> "$neko_log"; echo "$line"; done)
+        
+        if [ $ver_choice -gt 0 ] && [ $ver_choice -le ${#versions[@]} ]; then
+            setup_singbox "${versions[$((ver_choice-1))]}"
+        else
+            write_log "Invalid version selected"
+            exit 1
+        fi
+        ;;
+    *)
+        write_log "Invalid choice"
+        exit 1
+        ;;
+esac
+
+cd /
+rm -rf /tmp/neko_core
+write_log "Done! Core updated and service restarted."
