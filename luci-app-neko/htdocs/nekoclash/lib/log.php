@@ -37,10 +37,10 @@ if(isset($_GET['data'])){
     else if($dt == 'url_dash'){
         header("Content-type: application/json; charset=utf-8");
         $yacd = exec (" curl -m 5 -f -s $host_now/nekoclash/dashboard.php | grep 'href=\"h' | cut -d '\"' -f6 | head -1");
-        $meta = exec (" curl -m 5 -f -s $host_now/nekoclash/dashboard.php | grep 'href=\"h' | cut -d '\"' -f6 | tail -1");
+        $zashboard = exec (" curl -m 5 -f -s $host_now/nekoclash/dashboard.php | grep 'href=\"h' | cut -d '\"' -f6 | tail -1");
         echo "{\n";
         echo "  \"yacd\":\"$yacd\",\n";
-        echo "  \"meta\":\"$meta\"\n";
+        echo "  \"zashboard\":\"$zashboard\"\n";
         echo "}";
     }
 }
