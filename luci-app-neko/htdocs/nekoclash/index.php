@@ -135,6 +135,7 @@ if ($core_mode == 'mihomo') {
                                 </div>
                                 <span><?php echo $devices ?></span>
                             </div>
+                            <!--
                             <div class="list-group-item d-flex justify-content-between align-items-center border-bottom">
                                 <div class="d-flex align-items-center">
                                     <i data-feather="cpu" class="feather-sm me-2"></i>
@@ -142,6 +143,7 @@ if ($core_mode == 'mihomo') {
                                 </div>
                                 <span><?php echo "$ramUsage/$ramTotal MB" ?></span>
                             </div>
+                            -->
                             <div class="list-group-item d-flex justify-content-between align-items-center border-bottom">
                                 <div class="d-flex align-items-center">
                                     <i data-feather="hard-drive" class="feather-sm me-2"></i>
