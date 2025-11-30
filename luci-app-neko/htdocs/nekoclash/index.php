@@ -242,29 +242,6 @@ if ($core_mode == 'mihomo') {
                     </div>
                 </div>
 
-                <!-- Statistics Card -->
-                <div class="card mb-4">
-                    <div class="card-header d-flex align-items-center">
-                        <i data-feather="bar-chart-2" class="feather-sm me-2"></i>
-                        <h5 class="card-title mb-0">Total Data</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row justify-content-center text-center mb-4">
-                            <div class="col-md-6 col-xl-4">
-                                <h2 class="mb-2"><span id="downtotal">-</span></h2>
-                                <div class="text-muted">Download</div>
-                            </div>
-                            <div class="col-md-6 col-xl-4">
-                                <h2 class="mb-2"><span id="uptotal">-</span></h2>
-                                <div class="text-muted">Upload</div>
-                            </div>
-                        </div>
-                        <!--<div class="chart" style="height: 150px;">
-                            <canvas id="trafficChart"></canvas>
-                        </div>-->
-                    </div>
-                </div>
-
                 <!-- Logs Card -->
                 <div class="accordion mb-4">
                     <div class="accordion-item">
@@ -293,68 +270,6 @@ if ($core_mode == 'mihomo') {
         </div>
     </div>
 <script>
-function formatBytes(bytes) {
-    if (bytes < 1024000) return (bytes/1024).toFixed(1) + " KB";
-    if (bytes < 1024000000) return (bytes/1024000).toFixed(1) + " MB";
-    return (bytes/1024000000).toFixed(2) + " GB";
-}
-
-
-let labels = [];
-let downloadData = [];
-let uploadData = [];
-let trafficChart;
-
-function initChart() {
-    const ctx = document.getElementById('trafficChart');
-    if (!ctx) return;
-
-    trafficChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Download',
-                data: downloadData,
-                borderColor: '#3B7DDD',
-                borderWidth: 2,
-                fill: false,
-                tension: 0.3,
-                pointRadius: 0
-            }, {
-                label: 'Upload',
-                data: uploadData,
-                borderColor: '#28A745',
-                borderWidth: 2,
-                fill: false,
-                tension: 0.3,
-                pointRadius: 0
-            }]
-        },
-        options: {
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top'
-                }
-            },
-            scales: {
-                x: {
-                    grid: {
-                        display: false
-                    }
-                },
-                y: {
-                    beginAtZero: true,
-                    grid: {
-                        borderDash: [2, 2]
-                    }
-                }
-            }
-        }
-    });
-}
 
 function updateLogs() {
     const logsCollapse = document.getElementById('logsCollapse');
@@ -382,40 +297,10 @@ function updateLogs() {
         });
 }
 
-function updateStats() {
-  // Total Download
-  fetch('./lib/down.php')
-    .then(r => r.text())
-    .then(data => {
-      document.getElementById("downResult").innerHTML = data;
-    })
-    .catch(() => {
-      document.getElementById("downResult").innerHTML = "N/A";
-    });
-
-  // Total Upload
-  fetch('./lib/up.php')
-    .then(r => r.text())
-    .then(data => {
-      document.getElementById("upResult").innerHTML = data;
-    })
-    .catch(() => {
-      document.getElementById("upResult").innerHTML = "N/A";
-    });
-}
-
-// Jalankan setiap 1 detik
-setInterval(updateStats, 1000);
-window.onload = updateStats;
-
-
-
 document.addEventListener('DOMContentLoaded', function() {
     initChart();
     
     setInterval(updateLogs, 1000);
-    
-    setInterval(updateStats, 1000);
     
     document.getElementById('logsCollapse').addEventListener('shown.bs.collapse', updateLogs);
 });
