@@ -282,7 +282,7 @@ if(isset($_POST["file_action"])) {
                                     <label class="form-label text-center w-100">
                                         <i data-feather="shield" class="feather-sm me-2"></i>ENHANCED
                                     </label>
-                                    <input class="form-control text-center" name="ech" type="text" placeholder="<?php echo $neko_cfg['echanced'] ?>" disabled>
+                                    <input class="form-control text-center" name="ech" type="text" placeholder="<?php echo $neko_cfg['enhanced'] ?>" disabled>
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label text-center w-100">
