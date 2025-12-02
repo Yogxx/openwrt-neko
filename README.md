@@ -27,10 +27,10 @@ Packages list
 | [mihomo](https://github.com/yogxx/openwrt-neko/tree/main/mihomo) | ` 1.19.17 ` | <div align="center"> [x86](https://github.com/Yogxx/openwrt-neko/releases/tag/core_1.19.17_1.12.12)</br>[aarch64-generic](https://github.com/Yogxx/openwrt-neko/releases/tag/core_1.19.17_1.12.12) </div> | Latest stable version on [MetaCubeXD](https://github.com/MetaCubeX/mihomo/releases) |
 | [sing-box](https://github.com/yogxx/openwrt-neko/tree/main/sing-box) | ` 1.12.12 ` | <div align="center"> [sing-box core](https://github.com/Yogxx/openwrt-neko/releases/tag/core_1.19.17_1.12.12) </div> | [Original Repository](https://github.com/SagerNet/sing-box/releases) |
 
-Installation
+Manual Installation
 ---
 1. Downloads ` mihomo_v*.ipk ` and ` luci-app-neko_v*.ipk ` from releases
-2. install requirement depedencies `php8 php8-cgi kmod-tun bash curl jq ip-full ca-bundle`
+2. install requirement depedencies<br> `php8 php8-cgi kmod-tun bash curl jq ip-full ca-bundle`
 3. Install firstly ` mihomo_v*.ipk ` and ` sing-box_v*.ipk `
 4. After installing ` mihomo ` and ` sing-box `, install ` luci-app-neko_v*.ipk `
 5. Done, check your LUCI on openwrt
