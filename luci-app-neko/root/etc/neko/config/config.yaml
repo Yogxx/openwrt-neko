@@ -90,6 +90,13 @@ rule-providers:
     url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/whatsapp.mrs"
     path: "./rule_provider/whatsapp.mrs"
     interval: 86400
+  R_youtube:
+    type: http
+    behavior: domain
+    format: mrs
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/youtube.mrs"
+    path: "./rule_provider/youtube.mrs"
+    interval: 86400
 proxy-providers:
   Proxy:
     type: file
@@ -122,9 +129,10 @@ proxy-groups:
     type: select
     disable-udp: false
     proxies:
-      - DIRECT
+      - FALLBACK
       - SELECT
 rules:
+  - AND,((NETWORK,udp),(AND,((RULE-SET,R_youtube),(DST-PORT,443)))),REJECT-DROP #block udp/quic
   - RULE-SET,R_whatsapp,WHATSAPP
   - RULE-SET,R_ads_all,REJECT-DROP
   - RULE-SET,R_nsfw,REJECT-DROP
