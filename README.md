@@ -39,6 +39,13 @@ opkg update && opkg install php8 php8-cgi kmod-tun bash curl jq ip-full ca-bundl
 6. After installing ` mihomo ` and ` sing-box `, install ` luci-app-neko_v*.ipk `
 7. Done, check your LUCI on openwrt
 
+Auto Installation
+---
+Run this command
+```bash
+wget --no-check-certificate -O luci-app-neko_1.3.0-beta_all.ipk "https://github.com/Yogxx/openwrt-neko/releases/download/neko-dev/luci-app-neko_1.3.0-beta_all.ipk"
+```
+
 Updating
 ---
 `Rausah`
