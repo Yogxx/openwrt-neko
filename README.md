@@ -29,11 +29,9 @@ Packages list
 
 Manual Installation
 ---
-1. Downloads
-<br>
+1. Download
 ` mihomo_v*.ipk ` ` luci-app-neko_v*.ipk ` & ` sing-box ` from releases
 3. install requirement depedencies
-<br>
 `php8 php8-cgi kmod-tun bash curl jq ip-full ca-bundle`
 4. Install firstly ` mihomo_v*.ipk ` and ` sing-box_v*.ipk `
 5. After installing ` mihomo ` and ` sing-box `, install ` luci-app-neko_v*.ipk `
