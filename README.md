@@ -24,7 +24,7 @@ Packages list
 | Packages | Version | Arch | Information |
 |---|---|---|---|
 | luci-app-neko | ` 1.3.0-beta ` | <div align="center"> [all-arch](https://github.com/Yogxx/openwrt-neko/releases/download/neko-dev/luci-app-neko_1.3.0-beta_all.ipk) </div> | Include `config simple rules` files |
-| mihomo | ` 1.19.17 ` | <div align="center"> [x86](https://github.com/Yogxx/openwrt-neko/releases/tag/core_1.19.17_1.12.12)</br>[aarch64-generic](https://github.com/Yogxx/openwrt-neko/releases/tag/core_1.19.17_1.12.12) </div> | Latest stable version on [MetaCubeXD](https://github.com/MetaCubeX/mihomo/releases) |
+| mihomo | ` 1.19.17 ` | <div align="center"> [x86](https://github.com/Yogxx/openwrt-neko/releases/tag/core_1.19.17_1.12.12)</br>[aarch64-generic](https://github.com/Yogxx/openwrt-neko/releases/tag/core_1.19.17_1.12.12) </div> | Latest stable version on [MetaCubeX](https://github.com/MetaCubeX/mihomo/releases) |
 | sing-box | ` 1.12.12 ` | <div align="center"> [sing-box core](https://github.com/Yogxx/openwrt-neko/releases/tag/core_1.19.17_1.12.12) </div> | Original [Repository](https://github.com/SagerNet/sing-box/releases) |
 
 Manual Installation
@@ -35,7 +35,7 @@ Manual Installation
 ```bash
 opkg update && opkg install php8 php8-cgi kmod-tun bash curl jq ip-full ca-bundle
 ```
-5. upload to root <br> ` mihomo.ipk ` ` luci-app-neko.ipk ` & ` sing-box ` <br>
+5. upload to root <br> ` mihomo.ipk ` ` luci-app-neko.ipk ` & ` sing-box.ipk ` <br>
 - make sure there are only those 3 files
 6. run command ` opkg install *.ipk `
 7. Done, check your LUCI on openwrt
