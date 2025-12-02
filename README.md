@@ -37,10 +37,7 @@ Installation
 
 Updating
 ---
-1. Download updated `mihomo` or `luci-app-neko`
-2. Remove old version `opkg remove luci-app-neko`
-3. Installing downloaded update ` opkg install luci-app-neko_xxx.ipk `
-4. Done, check your LUCI on openwrt
+Rausah wok
 
 Compiling
 ---
