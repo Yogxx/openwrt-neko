@@ -101,8 +101,7 @@ jobs:
               - dev build, not recomended to install
               - ${{ inputs.changelog }}
             - Default Config : 
-              - config.yaml : minimal Configs for Neko (only 1 rules) - Secret : ` sign `
-              - nosignals.yaml : 2 rules can added (Block Host, Game) - Secret : ` telekulo `
+              - config.yaml : minimal Configs for Neko (only 3 rules) - Secret : ` one `
             ### Dependency Requirement
             - ` bash, kmod-tun, php, php-cgi ` (install PHP Manually before install Neko)
             - Openwrt 24: ` php8 php8-cgi nftables mihomo` 
