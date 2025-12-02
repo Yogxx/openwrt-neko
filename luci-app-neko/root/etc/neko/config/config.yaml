@@ -88,7 +88,7 @@ rule-providers:
     behavior: domain
     format: mrs
     url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/whatsapp.mrs"
-    path: "./rule_provider/WhatsApp.mrs"
+    path: "./rule_provider/whatsapp.mrs"
     interval: 86400
 proxy-providers:
   Proxy:
