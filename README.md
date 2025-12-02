@@ -23,9 +23,9 @@ Packages list
 ---
 | Packages | Version | Arch | Information |
 |---|---|---|---|
-| [luci-app-neko](https://github.com/yogxx/openwrt-neko/tree/main/luci-app-neko) | ` 1.2.1-beta ` | <div align="center"> [all-generic](https://github.com/yogxx/openwrt-neko/releases/download/luci-app-neko_1.3.0-beta/luci-app-neko_1.3.0-beta_all.ipk) </div> | Include `geosite` and `geoip` files |
+| [luci-app-neko](https://github.com/yogxx/openwrt-neko/tree/main/luci-app-neko) | ` 1.3.0-beta ` | <div align="center"> [all-generic](https://github.com/yogxx/openwrt-neko/releases/download/luci-app-neko_1.3.0-beta/luci-app-neko_1.3.0-beta_all.ipk) </div> | Include `geosite` and `geoip` files |
 | [mihomo](https://github.com/yogxx/openwrt-neko/tree/main/mihomo) | ` 1.19.17 ` | <div align="center"> [x86](https://github.com/yogxx/openwrt-neko/releases/download/mihomo_1.19.17/mihomo_1.19.17_x86_64.ipk)</br>[aarch64-generic](https://github.com/nosignals/openwrt-neko/releases/download/mihomo_1.19.17/mihomo_1.19.17_aarch64_generic.ipk)</br>[arm_cortex-a7_neon](https://github.com/nosignals/openwrt-neko/releases/download/mihomo_1.19.17/mihomo_1.19.17_arm_cortex-a7_neon-vfpv4.ipk) </div> | Latest stable version on [MetaCubeXD](https://github.com/MetaCubeX/mihomo/) |
-| [sing-box](https://github.com/yogxx/openwrt-neko/tree/main/sing-box) | ` 1.10.7 ` | - | [Original Repository](https://github.com/SagerNet/sing-box) |
+| [sing-box](https://github.com/yogxx/openwrt-neko/tree/main/sing-box) | ` 1.12.12 ` | - | [Original Repository](https://github.com/SagerNet/sing-box) |
 
 Installation
 ---
