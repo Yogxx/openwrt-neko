@@ -37,7 +37,7 @@ opkg update && opkg install php8 php8-cgi kmod-tun bash curl jq ip-full ca-bundl
 ```
 5. upload to root <br> ` mihomo.ipk ` ` luci-app-neko.ipk ` & ` sing-box ` <br>
 - make sure there are only those 3 files
-6. run command ` opkg install *ipk `
+6. run command ` opkg install *.ipk `
 7. Done, check your LUCI on openwrt
 
 
