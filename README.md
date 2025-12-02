@@ -37,7 +37,7 @@ Installation
 
 Updating
 ---
-Rausah wok
+`Rausah`
 
 Compiling
 ---
