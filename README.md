@@ -41,7 +41,7 @@ opkg update && opkg install php8 php8-cgi kmod-tun bash curl jq ip-full ca-bundl
 
 Auto Installation
 ---
-MIHOMO
+MIHOMO <br>
 aarch64_generic
 ```bash
 wget --no-check-certificate -O mihomo.ipk "https://github.com/Yogxx/openwrt-neko/releases/download/core_1.19.17_1.12.12/mihomo_1.19.17-r2_aarch64_generic.ipk"
