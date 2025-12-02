@@ -1,5 +1,5 @@
 <h1 align="center">
-  <img src="https://raw.githubusercontent.com/nosignals/neko/main/img/neko.png" alt="neko" width="500">
+  <img src="https://raw.githubusercontent.com/Yogxx/openwrt-neko/refs/heads/main/img/nekowok.png" alt="neko" width="500">
 </h1>
 
 <div align="center">
