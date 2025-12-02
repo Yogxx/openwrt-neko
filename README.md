@@ -30,7 +30,7 @@ Packages list
 Manual Installation
 ---
 1. Download
-` mihomo_v*.ipk ` ` luci-app-neko_v*.ipk ` & ` sing-box ` from releases
+[mihomo](https://github.com/Yogxx/openwrt-neko/releases/tag/core_1.19.17_1.12.12) ` luci-app-neko ` & ` sing-box ` from releases
 3. install requirement depedencies
 ```bash
 opkg update && opkg install php8 php8-cgi kmod-tun bash curl jq ip-full ca-bundle
