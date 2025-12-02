@@ -9,12 +9,12 @@ on:
       mihomo_version:
         description: 'Mihomo version'
         required: true
-        default: '1.19.14'
+        default: '1.19.17'
         type: string
       singbox_version:
         description: 'Sing-box version'
         required: true
-        default: '1.12.9'
+        default: '1.12.12'
         type: string
 jobs: 
   build_ipk:
@@ -26,7 +26,7 @@ jobs:
       fail-fast: false
       matrix:
         release:
-          - 24.10.3
+          - 24.10.4
         arch:
           - x86_64
           - aarch64_generic
