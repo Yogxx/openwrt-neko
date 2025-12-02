@@ -31,7 +31,7 @@ Manual Installation
 ---
 1. Downloads
 <br>
-`mihomo_v*.ipk` `luci-app-neko_v*.ipk` & `sing-box`from releases
+` mihomo_v*.ipk ` ` luci-app-neko_v*.ipk ` & ` sing-box ` from releases
 3. install requirement depedencies
 <br>
 `php8 php8-cgi kmod-tun bash curl jq ip-full ca-bundle`
