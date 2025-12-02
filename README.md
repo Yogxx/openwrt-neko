@@ -29,11 +29,15 @@ Packages list
 
 Manual Installation
 ---
-1. Downloads ` mihomo_v*.ipk ` and ` luci-app-neko_v*.ipk ` from releases
-2. install requirement depedencies<br> `php8 php8-cgi kmod-tun bash curl jq ip-full ca-bundle`
-3. Install firstly ` mihomo_v*.ipk ` and ` sing-box_v*.ipk `
-4. After installing ` mihomo ` and ` sing-box `, install ` luci-app-neko_v*.ipk `
-5. Done, check your LUCI on openwrt
+1. Downloads
+<br>
+`mihomo_v*.ipk` `luci-app-neko_v*.ipk` & `sing-box`from releases
+3. install requirement depedencies
+<br>
+`php8 php8-cgi kmod-tun bash curl jq ip-full ca-bundle`
+4. Install firstly ` mihomo_v*.ipk ` and ` sing-box_v*.ipk `
+5. After installing ` mihomo ` and ` sing-box `, install ` luci-app-neko_v*.ipk `
+6. Done, check your LUCI on openwrt
 
 Updating
 ---
