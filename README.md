@@ -41,7 +41,7 @@ opkg update && opkg install php8 php8-cgi kmod-tun bash curl jq ip-full ca-bundl
 
 Auto Installation
 ---
-MIHOMO <br>
+MIHOMO <br><br>
 aarch64_generic
 ```bash
 wget --no-check-certificate -O mihomo.ipk "https://github.com/Yogxx/openwrt-neko/releases/download/core_1.19.17_1.12.12/mihomo_1.19.17-r2_aarch64_generic.ipk"
@@ -55,7 +55,7 @@ LUCI-APP-NEKO
 ```bash
 wget --no-check-certificate -O luci-app-neko.ipk "https://github.com/Yogxx/openwrt-neko/releases/download/neko-dev/luci-app-neko_1.3.0-beta_all.ipk"
 ```
-SING-BOX
+SING-BOX <br><br>
 aarch64_generic
 ```bash
 wget --no-check-certificate -O sing-box.ipk "https://github.com/Yogxx/openwrt-neko/releases/download/core_1.19.17_1.12.12/sing-box_1.12.12-r1_aarch64_generic.ipk"
