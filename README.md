@@ -3,7 +3,7 @@
 </h1>
 
 <div align="center">
- <a target="_blank" href="https://github.com/nosignals/neko/releases"><img src="https://img.shields.io/github/downloads/Yogxx/neko/total?label=Total%20Download&labelColor=blue&style=for-the-badge"></a>
+ <a target="_blank" href="https://github.com/Yogxx/neko/releases"><img src="https://img.shields.io/github/downloads/Yogxx/neko/total?label=Total%20Download&labelColor=blue&style=for-the-badge"></a>
  <a target="_blank" href="https://dbai.team/discord"><img src="https://img.shields.io/discord/1127928183824597032?style=for-the-badge&logo=discord&label=%20"></a>
 </div>
 
