@@ -27,7 +27,7 @@ jobs:
       fail-fast: false
       matrix:
         release:
-          - 25.12
+          - snapshots
         arch:
           - x86_64
           - aarch64_generic
