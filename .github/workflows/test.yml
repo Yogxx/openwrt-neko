@@ -83,6 +83,7 @@ jobs:
         run: |
           mkdir -p ./release
           find . -type f -name "luci-app*.ipk" -exec cp {} ./release/ \;
+          find . -type f -name "luci-app*.apk" -exec cp {} ./release/ \;
           ls -lh ./release
         
       - name: Upload release asset
