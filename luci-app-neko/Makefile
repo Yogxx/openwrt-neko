@@ -18,7 +18,6 @@ define Package/$(PKG_NAME)
 		+bash \
 		+jq \
 		+mihomo \
-		+sing-box \
 		+php8 \
 		+php8-cgi
 endef
