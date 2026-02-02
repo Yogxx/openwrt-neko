@@ -16,7 +16,7 @@ define Package/$(PKG_NAME)
 	DEPENDS:=+luci-base \
 		+kmod-tun \
 		+bash \
-		+curl \
+		+curl-nossl \
 		+jq \
 		+mihomo \
 		+sing-box \
