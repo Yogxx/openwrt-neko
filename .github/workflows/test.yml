@@ -1,7 +1,7 @@
 #
 # Copyright (C) 2024 nosignals
 #
-name: Building Neko 25.12 DEV
+name: Building Neko DEV 25
 
 on:
   workflow_dispatch:
@@ -16,13 +16,13 @@ on:
         required: true
         default: ''
         type: string
-        
-jobs: 
-  build_ipk:
+
+jobs:
+  build_packages:
+    name: Build Neko Packages
+    runs-on: ubuntu-latest
     permissions:
       contents: write
-    name: Build Neko
-    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -32,79 +32,96 @@ jobs:
         arch:
           - x86_64
           - aarch64_generic
-          
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-        with:
-          ref: main
 
       - name: Preparing Theme
         run: |
-              echo ""
-              git clone -b neko-theme https://github.com/nosignals/neko
-              cp ./neko/theme/* ./luci-app-neko/htdocs/nekoclash/assets/theme/
-              cp ./neko/img/* ./luci-app-neko/htdocs/nekoclash/assets/img/
-        
-      - name: Preparing Neko
+          git clone -b neko-theme https://github.com/nosignals/neko
+          cp -r ./neko/theme/* ./luci-app-neko/htdocs/nekoclash/assets/theme/
+          cp -r ./neko/img/* ./luci-app-neko/htdocs/nekoclash/assets/img/
+
+      - name: Preparing Feeds
         run: |
-              echo ""
-              mkdir feeds artifacts
-              cp -rf ./luci-app-neko ./feeds
-              cp -rf ./mihomo ./feeds
-        
-      - name: Building luci-app-neko
+          mkdir -p feeds artifacts
+          cp -r ./luci-app-neko ./feeds
+          cp -r ./mihomo ./feeds
+
+      - name: Build Packages
         uses: nosignals/gh-action-sdk@main
         env:
           ARCH: ${{ matrix.arch }}-${{ matrix.release }}
-          ARTIFACTS_DIR: ${{ github.workspace }}/artifacts
           FEED_DIR: ${{ github.workspace }}/feeds
-          PACKAGES: mihomo luci-app-neko
+          ARTIFACTS_DIR: ${{ github.workspace }}/artifacts
+
+          # paket WAJIB saja (hindari konflik)
+          PACKAGES: mihomo luci-app-neko sing-box
+
+          # debug + stabil
           MAKE_FLAGS: -j1 V=s
           NO_SHFMT_CHECK: 1
-        
-      - name: Delivering Package
+
+          # 🔥 FIX FINAL RECURSIVE DEPENDENCY
+          EXTRA_CONFIG: |
+            CONFIG_LIBCURL_LDAP=n
+            CONFIG_PACKAGE_sing-box-tiny=n
+
+      - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: neko-${{ matrix.release }}_${{ matrix.arch }}
-          path: ${{ github.workspace }}/artifacts/bin/packages/${{ matrix.arch }}/action/luci-app*
+          path: |
+            artifacts/bin/packages/**/action/luci-app*
+            artifacts/bin/packages/**/action/mihomo*
 
-  push_packages:
-    needs: build_ipk
-    name: Push Packages to Release
-    permissions:
-      contents: write  # To push a branch
+  release:
+    name: Publish Release
+    needs: build_packages
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
     steps:
-      - name: Download temporary artifact
+      - name: Download Artifacts
         uses: actions/download-artifact@v4
-        
-      - name: Moving artifact to releases
-        shell: bash
+
+      - name: Collect Packages
         run: |
-          mkdir -p ./release
-          find . -type f -name "luci-app*.ipk" -exec cp {} ./release/ \;
-          find . -type f -name "luci-app*.apk" -exec cp {} ./release/ \;
-          ls -lh ./release
-        
-      - name: Upload release asset
+          mkdir -p release
+          find . -type f \( -name "*.ipk" -o -name "*.apk" \) -exec cp {} ./release/ \;
+          ls -lh release
+
+      - name: Upload Release Assets
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ./release/*
-          overwrite: true
-          prerelease: true
           tag: neko-dev
+          prerelease: true
+          overwrite: true
           file_glob: true
+          file: release/*
           body: |
-            # LUCI APP NEKO DEV
-            Simple Clash TUN based Proxy
-            ### Information
-            - Changelog : 
-              - dev build, not recomended to install
+            # LUCI APP NEKO (DEV)
+
+            Simple Clash / Mihomo TUN-based Proxy
+
+            ## Information
+            - Dev build (not recommended for production)
+            - Changelog:
               - ${{ inputs.changelog }}
-            - Default Config : 
-              - config.yaml : minimal Configs for Neko (only 3 rules) - Secret : ` one `
-            ### Dependency Requirement
-            - ` bash, kmod-tun, php, php-cgi ` (install PHP Manually before install Neko)
-            - Openwrt 24: ` php8 php8-cgi nftables mihomo` 
+
+            ## Compatibility
+            - OpenWrt 24.10.x → `.ipk`
+            - OpenWrt 25.12.x → `.apk`
+
+            ## Dependencies
+            - bash
+            - kmod-tun
+            - php8
+            - php8-cgi
+            - curl
+            - sing-box
+            - mihomo
+            
