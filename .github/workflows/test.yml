@@ -65,6 +65,7 @@ jobs:
 
           # 🔥 FIX FINAL RECURSIVE DEPENDENCY
           EXTRA_CONFIG: |
+            CONFIG_PACKAGE_sing-box=y
             CONFIG_PACKAGE_libcurl=n
             CONFIG_LIBCURL_LDAP=n
             CONFIG_PACKAGE_sing-box-tiny=n
