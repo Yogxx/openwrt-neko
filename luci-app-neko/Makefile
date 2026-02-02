@@ -16,13 +16,11 @@ define Package/$(PKG_NAME)
 	DEPENDS:=+luci-base \
 		+kmod-tun \
 		+bash \
-		+curl-nossl \
 		+jq \
 		+mihomo \
 		+sing-box \
 		+php8 \
-		+php8-cgi \
-		+php8-mod-curl
+		+php8-cgi
 endef
 
 define Package/$(PKG_NAME)/description
