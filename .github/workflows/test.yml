@@ -60,6 +60,7 @@ jobs:
           ARTIFACTS_DIR: ${{ github.workspace }}/artifacts
           FEED_DIR: ${{ github.workspace }}/feeds
           PACKAGES: mihomo luci-app-neko
+          MAKE_FLAGS: -j1 V=s
           NO_SHFMT_CHECK: 1
         
       - name: Delivering Package
