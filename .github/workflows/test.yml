@@ -63,13 +63,6 @@ jobs:
           MAKE_FLAGS: -j1 V=s
           NO_SHFMT_CHECK: 1
 
-          # 🔥 FIX FINAL RECURSIVE DEPENDENCY
-          EXTRA_CONFIG: |
-            CONFIG_PACKAGE_sing-box=y
-            CONFIG_PACKAGE_libcurl=n
-            CONFIG_LIBCURL_LDAP=n
-            CONFIG_PACKAGE_sing-box-tiny=n
-
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
