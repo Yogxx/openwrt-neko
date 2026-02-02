@@ -22,8 +22,7 @@ define Package/$(PKG_NAME)
 		+sing-box \
 		+php8 \
 		+php8-cgi \
-		+php8-mod-curl \
-		+php8-mod-json
+		+php8-mod-curl
 endef
 
 define Package/$(PKG_NAME)/description
