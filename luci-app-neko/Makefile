@@ -38,22 +38,30 @@ define Build/Compile
 endef
 
 define Package/$(PKG_NAME)/install
-	# /etc/neko
-	$(INSTALL_DIR) $(1)/etc/neko
-	$(CP) ./root/etc/neko/* $(1)/etc/neko/
+	# etc/neko (optional)
+	if [ -d ./root/etc/neko ]; then \
+		$(INSTALL_DIR) $(1)/etc/neko; \
+		$(CP) ./root/etc/neko/* $(1)/etc/neko/ 2>/dev/null || true; \
+	fi
 
 	# init.d
-	$(INSTALL_DIR) $(1)/etc/init.d
-	$(INSTALL_BIN) ./root/etc/init.d/neko $(1)/etc/init.d/neko
+	if [ -f ./root/etc/init.d/neko ]; then \
+		$(INSTALL_DIR) $(1)/etc/init.d; \
+		$(INSTALL_BIN) ./root/etc/init.d/neko $(1)/etc/init.d/neko; \
+	fi
 
 	# uci-defaults
-	$(INSTALL_DIR) $(1)/etc/uci-defaults
-	$(INSTALL_BIN) ./root/etc/uci-defaults/99_neko \
-		$(1)/etc/uci-defaults/99_neko
+	if [ -f ./root/etc/uci-defaults/99_neko ]; then \
+		$(INSTALL_DIR) $(1)/etc/uci-defaults; \
+		$(INSTALL_BIN) ./root/etc/uci-defaults/99_neko \
+			$(1)/etc/uci-defaults/99_neko; \
+	fi
 
-	# www
-	$(INSTALL_DIR) $(1)/www/nekoclash
-	$(CP) ./htdocs/* $(1)/www/nekoclash/
+	# htdocs (optional)
+	if [ -d ./htdocs ]; then \
+		$(INSTALL_DIR) $(1)/www/nekoclash; \
+		$(CP) ./htdocs/* $(1)/www/nekoclash/ 2>/dev/null || true; \
+	fi
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME)))
