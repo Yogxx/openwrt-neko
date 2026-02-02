@@ -57,7 +57,7 @@ jobs:
           ARTIFACTS_DIR: ${{ github.workspace }}/artifacts
 
           # paket WAJIB saja (hindari konflik)
-          PACKAGES: mihomo luci-app-neko sing-box
+          PACKAGES: luci-app-neko
 
           # debug + stabil
           MAKE_FLAGS: -j1 V=s
