@@ -17,7 +17,6 @@ define Package/$(PKG_NAME)
 		+kmod-tun \
 		+bash \
 		+jq \
-		+mihomo \
 		+php8 \
 		+php8-cgi
 endef
