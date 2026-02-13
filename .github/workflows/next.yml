@@ -11,7 +11,7 @@ on:
       changelog:
         description: 'Changelog'
         required: true
-        default: 'Fast build: Targeted armsr/armv8 and x86/64'
+        default: 'Fast build: Targeted armsr/armv8 and x86/64 with APK support'
         type: string
         
 jobs: 
@@ -42,9 +42,8 @@ jobs:
 
       - name: Preparing Source
         run: |
-          # Membuat struktur feed lokal
+          # Membuat struktur feed lokal hanya untuk UI
           mkdir -p custom-feeds/neko
-          # Hanya copy luci-app-neko agar build cepat (tanpa kompilasi mihomo)
           cp -rf ./luci-app-neko custom-feeds/neko/
           
           # Inject theme (Langkah opsional)
@@ -66,17 +65,24 @@ jobs:
       - name: Collecting Artifacts
         run: |
           mkdir -p ./bin-artifacts
-          # Mengambil hanya file luci-app-neko (ipk/apk)
-          # Mencari dari root folder bin/ agar .apk di snapshot tetap ketemu
+          # Mencari seluruh folder bin untuk memastikan .apk di snapshot tertangkap
+          # Hanya mengambil file luci-app-neko sesuai permintaan
           find bin/ -type f \( -name "luci-app-neko*.ipk" -o -name "luci-app-neko*.apk" \) -exec cp {} ./bin-artifacts/ \;
-          echo "Files collected:"
+          
+          # Verifikasi jika file tidak ditemukan maka build gagal agar tidak lanjut ke rilis
+          if [ -z "$(ls -A ./bin-artifacts)" ]; then
+            echo "Error: No luci-app-neko packages found!"
+            exit 1
+          fi
+          echo "Files collected successfully."
           ls -R ./bin-artifacts
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: neko-${{ matrix.release }}-${{ matrix.arch }}
+          name: neko-pkg-${{ matrix.release }}-${{ matrix.arch }}
           path: ./bin-artifacts/*
+          if-no-files-found: error
 
   release:
     needs: build
@@ -88,12 +94,13 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          path: ./all-releases
+          path: ./downloaded-artifacts
 
       - name: Organize Files
         run: |
           mkdir -p ./final-release
-          find ./all-releases -type f \( -name "*.ipk" -o -name "*.apk" \) -exec cp {} ./final-release/ \;
+          # Mengumpulkan semua file dari sub-folder artifact ke satu tempat
+          find ./downloaded-artifacts -type f \( -name "*.ipk" -o -name "*.apk" \) -exec cp {} ./final-release/ \;
 
       - name: Upload to GitHub Release
         uses: svenstaro/upload-release-action@v2
@@ -105,13 +112,12 @@ jobs:
           tag: neko-dev
           file_glob: true
           body: |
-            ## Neko Multi-Format Fast Build
+            ## Neko Multi-Format Release
             Built using Official OpenWrt SDK.
             
             ### Details
             - **Version**: ${{ inputs.version }}
-            - **Target**: armsr/armv8 (ARMv8 SystemReady) & x86/64.
-            - **Format .apk**: Gunakan untuk OpenWrt 25.12+ (Apin Edition).
-            - **Format .ipk**: Gunakan untuk OpenWrt 24.10 dan versi lama.
-            - **Note**: Mihomo tidak disertakan untuk mempercepat proses build.
+            - **Format .apk**: Untuk OpenWrt 25.12+ (Apin Edition).
+            - **Format .ipk**: Untuk OpenWrt 24.10 dan versi lama.
+            - **Target**: armsr-armv8 & x86-64.
             - **Changelog**: ${{ inputs.changelog }}
