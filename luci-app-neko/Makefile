@@ -14,9 +14,7 @@ define Package/$(PKG_NAME)
 	SUBMENU:=3. Applications
 	TITLE:=LuCI support for Neko Mihomo
 	PKGARCH:=all
-	# php8-cgi adalah standar terbaru di 25.12
-	# php8-mod-openssl ditambahkan agar Neko bisa download config via HTTPS
-	DEPENDS:=+luci-base +kmod-tun +bash +jq +php8 +php8-cgi +php8-mod-openssl +mihomo
+	DEPENDS:=+luci-base +kmod-tun +bash +jq +php8 +php8-cgi +mihomo
 endef
 
 define Package/$(PKG_NAME)/description
