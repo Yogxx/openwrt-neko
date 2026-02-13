@@ -24,17 +24,17 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Versi IPK (Gunakan tag 'openwrt-24.10' agar Docker image ditemukan)
+          # Versi IPK (24.10)
           - release: openwrt-24.10
             arch: x86-64
           - release: openwrt-24.10
-            arch: aarch64-generic
+            arch: armvirt-64bit # Perbaikan: Gunakan armvirt-64bit agar image SDK ditemukan
 
-          # Versi APK (Gunakan 'snapshot' untuk dukungan sistem .apk OpenWrt 25.12)
+          # Versi APK (Snapshot / 25.12)
           - release: snapshot
             arch: x86-64
           - release: snapshot
-            arch: aarch64-generic
+            arch: armvirt-64bit # Perbaikan: Gunakan armvirt-64bit agar image SDK ditemukan
 
     steps:
       - name: Checkout Repository
@@ -42,12 +42,10 @@ jobs:
 
       - name: Preparing Source
         run: |
-          # Membuat struktur feed lokal
           mkdir -p custom-feeds/neko
           cp -rf ./luci-app-neko custom-feeds/neko/
           cp -rf ./mihomo custom-feeds/neko/
           
-          # Inject theme (Langkah opsional)
           git clone -b neko-theme https://github.com/nosignals/neko tmp-neko
           mkdir -p custom-feeds/neko/luci-app-neko/htdocs/nekoclash/assets/theme/
           cp -rf tmp-neko/theme/* custom-feeds/neko/luci-app-neko/htdocs/nekoclash/assets/theme/ || true
@@ -60,15 +58,19 @@ jobs:
           FEEDNAME: custom_feed
           FEEDDIR: ${{ github.workspace }}/custom-feeds
           PACKAGES: luci-app-neko mihomo
-          # Mengabaikan error pada paket dependensi lain (seperti apache/php) agar build tetap lanjut
           IGNORE_ERRORS: m
           NO_SIGNCHECK: 1
 
       - name: Collecting Artifacts
         run: |
           mkdir -p ./bin-artifacts
-          # Mengambil file .ipk (opkg) dan .apk (apk-tools) secara otomatis
-          find bin/packages/ -type f \( -name "*.ipk" -o -name "*.apk" \) -exec cp {} ./bin-artifacts/ \;
+          # Filter khusus: Hanya mengambil file yang diawali dengan 'luci-app-neko'
+          # Mencari di seluruh folder bin agar .apk yang lokasinya berbeda tetap ketemu
+          find bin/ -type f \( -name "luci-app-neko*.ipk" -o -name "luci-app-neko*.apk" \) -exec cp {} ./bin-artifacts/ \;
+          
+          # Cek hasil di log untuk memastikan file tercopy
+          echo "Files collected:"
+          ls -R ./bin-artifacts
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
@@ -91,7 +93,8 @@ jobs:
       - name: Organize Files
         run: |
           mkdir -p ./final-release
-          find ./all-releases -type f -name "*" -exec cp {} ./final-release/ \;
+          # Hanya mengambil file ipk/apk dari semua subfolder artifact
+          find ./all-releases -type f \( -name "*.ipk" -o -name "*.apk" \) -exec cp {} ./final-release/ \;
 
       - name: Upload to GitHub Release
         uses: svenstaro/upload-release-action@v2
@@ -108,6 +111,6 @@ jobs:
             
             ### Details
             - **Version**: ${{ inputs.version }}
-            - **Format .apk**: Gunakan untuk OpenWrt 25.12+ (Apin Edition).
-            - **Format .ipk**: Gunakan untuk OpenWrt 24.10, 23.05, dan versi lama.
+            - **Format .apk**: Mendukung OpenWrt 25.12+ (Apin Edition).
+            - **Format .ipk**: Mendukung OpenWrt 24.10 dan versi lama.
             - **Changelog**: ${{ inputs.changelog }}
