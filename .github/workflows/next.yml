@@ -1,4 +1,4 @@
-name: Building Neko DEV (Official SDK)
+name: Building Neko Next (Official SDK)
 
 on:
   workflow_dispatch:
