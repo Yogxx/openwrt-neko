@@ -11,7 +11,7 @@ on:
       changelog:
         description: 'Changelog'
         required: true
-        default: 'Migrated to Official SDK for APK/IPK support'
+        default: 'Fast build: Removed mihomo compilation'
         type: string
         
 jobs: 
@@ -28,13 +28,13 @@ jobs:
           - release: openwrt-24.10
             arch: x86-64
           - release: openwrt-24.10
-            arch: armvirt-64bit # Perbaikan: Gunakan armvirt-64bit agar image SDK ditemukan
+            arch: armvirt-64bit
 
           # Versi APK (Snapshot / 25.12)
           - release: snapshot
             arch: x86-64
           - release: snapshot
-            arch: armvirt-64bit # Perbaikan: Gunakan armvirt-64bit agar image SDK ditemukan
+            arch: armvirt-64bit
 
     steps:
       - name: Checkout Repository
@@ -43,9 +43,10 @@ jobs:
       - name: Preparing Source
         run: |
           mkdir -p custom-feeds/neko
+          # Hanya copy luci-app-neko, folder mihomo diabaikan agar tidak dikompilasi
           cp -rf ./luci-app-neko custom-feeds/neko/
-          cp -rf ./mihomo custom-feeds/neko/
           
+          # Inject theme
           git clone -b neko-theme https://github.com/nosignals/neko tmp-neko
           mkdir -p custom-feeds/neko/luci-app-neko/htdocs/nekoclash/assets/theme/
           cp -rf tmp-neko/theme/* custom-feeds/neko/luci-app-neko/htdocs/nekoclash/assets/theme/ || true
@@ -57,19 +58,17 @@ jobs:
           ARCH: ${{ matrix.arch }}-${{ matrix.release }}
           FEEDNAME: custom_feed
           FEEDDIR: ${{ github.workspace }}/custom-feeds
-          PACKAGES: luci-app-neko mihomo
+          # Hanya build UI saja
+          PACKAGES: luci-app-neko
           IGNORE_ERRORS: m
           NO_SIGNCHECK: 1
 
       - name: Collecting Artifacts
         run: |
           mkdir -p ./bin-artifacts
-          # Filter khusus: Hanya mengambil file yang diawali dengan 'luci-app-neko'
-          # Mencari di seluruh folder bin agar .apk yang lokasinya berbeda tetap ketemu
+          # Mengambil hanya file luci-app-neko
           find bin/ -type f \( -name "luci-app-neko*.ipk" -o -name "luci-app-neko*.apk" \) -exec cp {} ./bin-artifacts/ \;
-          
-          # Cek hasil di log untuk memastikan file tercopy
-          echo "Files collected:"
+          echo "Build result:"
           ls -R ./bin-artifacts
 
       - name: Upload Artifact
@@ -93,7 +92,6 @@ jobs:
       - name: Organize Files
         run: |
           mkdir -p ./final-release
-          # Hanya mengambil file ipk/apk dari semua subfolder artifact
           find ./all-releases -type f \( -name "*.ipk" -o -name "*.apk" \) -exec cp {} ./final-release/ \;
 
       - name: Upload to GitHub Release
@@ -106,11 +104,11 @@ jobs:
           tag: neko-dev
           file_glob: true
           body: |
-            ## Neko Multi-Format Release
+            ## Neko Fast Build (UI Only)
             Built using Official OpenWrt SDK.
             
             ### Details
             - **Version**: ${{ inputs.version }}
+            - **Note**: Paket Mihomo tidak disertakan. Pasang Mihomo secara manual atau melalui `opkg install mihomo`.
             - **Format .apk**: Mendukung OpenWrt 25.12+ (Apin Edition).
             - **Format .ipk**: Mendukung OpenWrt 24.10 dan versi lama.
-            - **Changelog**: ${{ inputs.changelog }}
