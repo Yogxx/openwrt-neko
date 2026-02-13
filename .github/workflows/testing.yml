@@ -1,0 +1,108 @@
+name: Building Neko DEV (Official SDK)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Neko version'
+        required: true
+        default: '1.3.0-beta'
+        type: string
+      changelog:
+        description: 'Changelog'
+        required: true
+        default: 'Migrated to Official SDK for APK/IPK support'
+        type: string
+        
+jobs: 
+  build:
+    permissions:
+      contents: write
+    name: Build ${{ matrix.arch }} - ${{ matrix.release }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Versi Stable Lama (Output .ipk)
+          - release: 23.05.3
+            arch: x86/64
+          - release: 24.10.0
+            arch: aarch64/generic
+          # Versi Baru (Output .apk secara otomatis)
+          - release: 25.12.0
+            arch: x86/64
+          - release: 25.12.0
+            arch: aarch64/generic
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Preparing Source
+        run: |
+          # Persiapan folder feeds untuk SDK
+          mkdir -p custom-feeds/neko
+          cp -rf ./luci-app-neko custom-feeds/neko/
+          cp -rf ./mihomo custom-feeds/neko/
+          
+          # Inject theme (Optional step based on your previous workflow)
+          git clone -b neko-theme https://github.com/nosignals/neko tmp-neko
+          mkdir -p custom-feeds/neko/luci-app-neko/htdocs/nekoclash/assets/theme/
+          cp -rf tmp-neko/theme/* custom-feeds/neko/luci-app-neko/htdocs/nekoclash/assets/theme/ || true
+          rm -rf tmp-neko
+
+      - name: Build Packages (Official SDK)
+        uses: openwrt/gh-action-sdk@v7
+        env:
+          ARCH: ${{ matrix.arch }}-${{ matrix.release }}
+          FEEDNAME: custom_feed
+          FEEDDIR: ${{ github.workspace }}/custom-feeds
+          PACKAGES: luci-app-neko mihomo
+          IGNORE_ERRORS: m
+          NO_SIGNCHECK: 1
+
+      - name: Collecting Artifacts
+        run: |
+          mkdir -p ./bin-artifacts
+          # Cari semua file .ipk atau .apk hasil build
+          find bin/packages/ -type f \( -name "*.ipk" -o -name "*.apk" \) -exec cp {} ./bin-artifacts/ \;
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: neko-${{ matrix.release }}-${{ strategy.job-index }}
+          path: ./bin-artifacts/*
+
+  release:
+    needs: build
+    name: Create Release
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./all-releases
+
+      - name: Upload to GitHub Release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ./all-releases/**/*
+          overwrite: true
+          prerelease: true
+          tag: neko-dev
+          file_glob: true
+          body: |
+            ## Neko Multi-Format Release
+            Built using Official OpenWrt SDK.
+            
+            ### Details
+            - **Version**: ${{ inputs.version }}
+            - **OpenWrt 25.12+**: Uses **.apk** format.
+            - **OpenWrt 24.10 & 23.05**: Uses **.ipk** format.
+            - **Changelog**: ${{ inputs.changelog }}
+
+---
