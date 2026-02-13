@@ -24,16 +24,20 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Versi Stable Lama (Output .ipk)
+          # Format ARCH untuk SDK harus menggunakan dash (-) bukan slash (/) 
+          # agar tidak menyebabkan 'invalid reference format' pada Docker
+          
+          # Versi IPK
           - release: 23.05.3
-            arch: x86/64
+            arch: x86-64
           - release: 24.10.0
-            arch: aarch64/generic
-          # Versi Baru (Output .apk secara otomatis)
+            arch: aarch64-generic
+
+          # Versi APK (OpenWrt 25.12)
           - release: 25.12.0
-            arch: x86/64
+            arch: x86-64
           - release: 25.12.0
-            arch: aarch64/generic
+            arch: aarch64-generic
 
     steps:
       - name: Checkout Repository
@@ -51,7 +55,7 @@ jobs:
           mkdir -p custom-feeds/neko/luci-app-neko/htdocs/nekoclash/assets/theme/
           cp -rf tmp-neko/theme/* custom-feeds/neko/luci-app-neko/htdocs/nekoclash/assets/theme/ || true
           rm -rf tmp-neko
-
+          
       - name: Build Packages (Official SDK)
         uses: openwrt/gh-action-sdk@v7
         env:
@@ -59,7 +63,6 @@ jobs:
           FEEDNAME: custom_feed
           FEEDDIR: ${{ github.workspace }}/custom-feeds
           PACKAGES: luci-app-neko mihomo
-          IGNORE_ERRORS: m
           NO_SIGNCHECK: 1
 
       - name: Collecting Artifacts
