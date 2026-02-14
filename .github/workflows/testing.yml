@@ -1,4 +1,4 @@
-name: Build Neko Next (Snapshot / 25.12 - APK)
+name: Build Neko Snapshot (25.xx - APK)
 
 on:
   workflow_dispatch:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    name: Build ${{ matrix.arch }} - snapshot
+    name: Build ${{ matrix.arch }}
     runs-on: ubuntu-latest
 
     strategy:
@@ -35,43 +35,49 @@ jobs:
           PACKAGES: luci-app-neko
           V: s
 
-      - name: Collect APK Artifacts
+      - name: Collect APK
         run: |
           mkdir -p release
           find bin/ -type f -name "*.apk" -exec cp {} release/ \;
 
-          if [ ! -f release/*.apk ]; then
+          echo "Collected files:"
+          ls -lah release
+
+          if ! ls release/*.apk 1> /dev/null 2>&1; then
             echo "No APK generated!"
             exit 1
           fi
 
-      - name: Upload Artifact
+      - name: Upload Unified Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: neko-${{ matrix.arch }}
+          name: neko-snapshot
           path: release/*.apk
           if-no-files-found: error
+          overwrite: true
 
   release:
-    name: Create Snapshot Release
+    name: Publish Snapshot Release
     needs: build
     runs-on: ubuntu-latest
 
     steps:
-      - name: Download All Artifacts
+      - name: Download Artifact
         uses: actions/download-artifact@v4
         with:
+          name: neko-snapshot
           path: artifacts
 
       - name: Show Files
         run: ls -R artifacts
 
-      - name: Create Release
+      - name: Create / Update Release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: artifacts/**/*.apk
-          tag: snapshot-${{ github.run_number }}
+          file: artifacts/*.apk
+          tag: snapshot
           file_glob: true
           overwrite: true
+          prerelease: true
           
