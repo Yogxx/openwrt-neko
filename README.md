@@ -33,12 +33,12 @@ Manual Installation
 [mihomo](https://github.com/Yogxx/openwrt-neko/releases/tag/core_1.19.20_1.12.21) & [luci-app-neko](https://github.com/Yogxx/openwrt-neko/releases/tag/neko-dev) install ` sing-box ` if needed
 3. install requirement depedencies
 ```bash
-opkg update && opkg install php8 php8-cgi kmod-tun bash curl jq ip-full ca-bundle
+apk update && apk add php8 php8-cgi kmod-tun bash curl jq ip-full ca-bundle
 ```
 5. upload to root <br>
 - ` mihomo-*.apk `<br>
 - ` luci-app-neko-*.apk `<br>
-- ` sing-box-*.apk ` <br> if needed
+- ` sing-box-*.apk ` if needed <br>
 - make sure there are only those 3 files
 6. run command <br>
 - ` cd ` <br>
