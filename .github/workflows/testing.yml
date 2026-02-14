@@ -10,8 +10,6 @@ jobs:
   build:
     name: Build ${{ matrix.arch }} - snapshot
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     strategy:
       fail-fast: false
@@ -39,35 +37,41 @@ jobs:
 
       - name: Collect APK Artifacts
         run: |
-          mkdir -p ./release
-          find bin/ -type f -name "*.apk" -exec cp {} ./release/ \;
+          mkdir -p release
+          find bin/ -type f -name "*.apk" -exec cp {} release/ \;
 
-          if [ -z "$(ls -A ./release)" ]; then
-            echo "Error: No .apk packages found!"
+          if [ ! -f release/*.apk ]; then
+            echo "No APK generated!"
             exit 1
           fi
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: neko-snapshot-${{ matrix.arch }}
-          path: ./release/*
+          name: neko-${{ matrix.arch }}
+          path: release/*.apk
+          if-no-files-found: error
 
   release:
+    name: Create Snapshot Release
     needs: build
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     steps:
-      - uses: actions/download-artifact@v4
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
         with:
-          path: ./all-builds
+          path: artifacts
 
-      - uses: svenstaro/upload-release-action@v2
+      - name: Show Files
+        run: ls -R artifacts
+
+      - name: Create Release
+        uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ./all-builds/**/*
-          tag: neko-snapshot-${{ github.run_number }}
+          file: artifacts/**/*.apk
+          tag: snapshot-${{ github.run_number }}
           file_glob: true
-          overwrite: false
+          overwrite: true
           
