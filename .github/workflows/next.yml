@@ -1,123 +1,62 @@
-name: Building Neko Next (Official SDK)
+name: Build luci-app-neko (OpenWrt 25 APK)
 
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Neko version'
-        required: true
-        default: '1.3.0-beta'
-        type: string
-      changelog:
-        description: 'Changelog'
-        required: true
-        default: 'Fast build: Targeted armsr/armv8 and x86/64 with APK support'
-        type: string
-        
-jobs: 
-  build:
-    permissions:
-      contents: write
-    name: Build ${{ matrix.arch }} - ${{ matrix.release }}
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # Target Stable 24.10.5 (Output .ipk)
-          - release: 24.10.5
-            arch: armsr-armv8
-          - release: 24.10.5
-            arch: x86-64
+  push:
+    tags:
+      - 'v*'
 
-          # Target Snapshot / 25.12 (Output .apk)
-          - release: snapshot
-            arch: armsr-armv8
-          - release: snapshot
-            arch: x86-64
+jobs:
+  build:
+    runs-on: ubuntu-22.04
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Preparing Source
+      - name: Install dependencies
         run: |
-          # Membuat struktur feed lokal hanya untuk UI
-          mkdir -p custom-feeds/neko
-          cp -rf ./luci-app-neko custom-feeds/neko/
-          
-          # Inject theme (Langkah opsional)
-          git clone -b neko-theme https://github.com/nosignals/neko tmp-neko
-          mkdir -p custom-feeds/neko/luci-app-neko/htdocs/nekoclash/assets/theme/
-          cp -rf tmp-neko/theme/* custom-feeds/neko/luci-app-neko/htdocs/nekoclash/assets/theme/ || true
-          rm -rf tmp-neko
-          
-      - name: Build Packages (Official SDK)
-        uses: openwrt/gh-action-sdk@v7
+          sudo apt update
+          sudo apt install -y build-essential clang flex bison g++ gawk \
+          gcc-multilib g++-multilib gettext git libncurses-dev libssl-dev \
+          python3-distutils rsync unzip zlib1g-dev file wget
+
+      - name: Clone OpenWrt Snapshot (APK based)
+        run: |
+          git clone https://github.com/openwrt/openwrt.git
+          cd openwrt
+          git checkout master
+
+      - name: Update & Install Feeds
+        run: |
+          cd openwrt
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Copy luci-app-neko into package folder
+        run: |
+          cp -r $GITHUB_WORKSPACE/luci-app-neko openwrt/package/
+
+      - name: Configure build (minimal for package only)
+        run: |
+          cd openwrt
+          make defconfig
+
+      - name: Build luci-app-neko
+        run: |
+          cd openwrt
+          make package/luci-app-neko/compile -j$(nproc) V=s
+
+      - name: Collect luci-app-neko APK
+        run: |
+          mkdir -p release
+          find openwrt/bin/packages -type f -name "luci-app-neko*.apk" -exec cp {} release/ \;
+          ls -lah release
+
+      - name: Create Release & Upload APK
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: release/*.apk
         env:
-          ARCH: ${{ matrix.arch }}-${{ matrix.release }}
-          FEEDNAME: custom_feed
-          FEEDDIR: ${{ github.workspace }}/custom-feeds
-          PACKAGES: luci-app-neko
-          IGNORE_ERRORS: m
-          NO_SIGNCHECK: 1
-
-      - name: Collecting Artifacts
-        run: |
-          mkdir -p ./bin-artifacts
-          # Mencari seluruh folder bin untuk memastikan .apk di snapshot tertangkap
-          # Hanya mengambil file luci-app-neko sesuai permintaan
-          find bin/ -type f \( -name "luci-app-neko*.ipk" -o -name "luci-app-neko*.apk" \) -exec cp {} ./bin-artifacts/ \;
-          
-          # Verifikasi jika file tidak ditemukan maka build gagal agar tidak lanjut ke rilis
-          if [ -z "$(ls -A ./bin-artifacts)" ]; then
-            echo "Error: No luci-app-neko packages found!"
-            exit 1
-          fi
-          echo "Files collected successfully."
-          ls -R ./bin-artifacts
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: neko-pkg-${{ matrix.release }}-${{ matrix.arch }}
-          path: ./bin-artifacts/*
-          if-no-files-found: error
-
-  release:
-    needs: build
-    name: Create Release
-    permissions:
-      contents: write
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: ./downloaded-artifacts
-
-      - name: Organize Files
-        run: |
-          mkdir -p ./final-release
-          # Mengumpulkan semua file dari sub-folder artifact ke satu tempat
-          find ./downloaded-artifacts -type f \( -name "*.ipk" -o -name "*.apk" \) -exec cp {} ./final-release/ \;
-
-      - name: Upload to GitHub Release
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ./final-release/*
-          overwrite: true
-          prerelease: true
-          tag: neko-dev
-          file_glob: true
-          body: |
-            ## Neko Multi-Format Release
-            Built using Official OpenWrt SDK.
-            
-            ### Details
-            - **Version**: ${{ inputs.version }}
-            - **Format .apk**: Untuk OpenWrt 25.12+ (Apin Edition).
-            - **Format .ipk**: Untuk OpenWrt 24.10 dan versi lama.
-            - **Target**: armsr-armv8 & x86-64.
-            - **Changelog**: ${{ inputs.changelog }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
