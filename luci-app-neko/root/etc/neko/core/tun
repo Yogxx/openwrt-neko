@@ -1,44 +1,29 @@
-#!/bin/bash
-# Neko TUN Script - FW4 Only
-# MIT License
+#!/bin/sh
+# Neko FW4 Firewall Script (UCI-based)
 
-tun_device="Meta"
-nft=$(command -v nft)
+TUN_DEV="Meta"
+RULE_NAME="neko_tun"
 
-start_tun() {
-    echo "[`date +%T`] - Activating TUN device ${tun_device}"
+start() {
+    echo "[`date +%T`] - Adding Neko firewall rule"
 
-    # Hapus rule lama
-    for chain in forward input srcnat; do
-        handles=$(nft -a list chain inet fw4 $chain | grep -E "Neko" | awk -F '# handle ' '{print $2}')
-        for h in $handles; do
-            $nft delete rule inet fw4 $chain handle $h
-        done
-    done
+    uci -q delete firewall.$RULE_NAME
+    uci set firewall.$RULE_NAME="rule"
+    uci set firewall.$RULE_NAME.name="Neko TUN"
+    uci set firewall.$RULE_NAME.device="$TUN_DEV"
+    uci set firewall.$RULE_NAME.proto="tcp udp"
+    uci set firewall.$RULE_NAME.target="ACCEPT"
 
-    # Tambahkan rule
-    $nft insert rule inet fw4 forward position 0 meta l4proto { tcp, udp } oifname $tun_device counter accept comment "Neko TUN Forward"
-    $nft insert rule inet fw4 forward position 0 meta l4proto { tcp, udp } iifname $tun_device counter accept comment "Neko TUN Forward"
-    $nft insert rule inet fw4 input position 0 meta l4proto { tcp, udp } iifname $tun_device counter accept comment "Neko TUN Input"
-    $nft insert rule inet fw4 srcnat position 0 meta nfproto { ipv4 } oifname $tun_device counter return comment "Neko TUN Postrouting"
-
-    echo "[`date +%T`] - TUN ${tun_device} activated"
+    uci commit firewall
+    /etc/init.d/firewall restart
 }
 
-stop_tun() {
-    echo "[`date +%T`] - Cleaning TUN device ${tun_device}"
-    for chain in forward input srcnat; do
-        handles=$(nft -a list chain inet fw4 $chain | grep -E "Neko" | awk -F '# handle ' '{print $2}')
-        for h in $handles; do
-            $nft delete rule inet fw4 $chain handle $h
-        done
-    done
-    echo "[`date +%T`] - TUN ${tun_device} cleaned"
+stop() {
+    echo "[`date +%T`] - Removing Neko firewall rule"
+
+    uci -q delete firewall.$RULE_NAME
+    uci commit firewall
+    /etc/init.d/firewall restart
 }
 
-# Default: start TUN, gunakan "stop" sebagai argumen untuk mematikan
-if [[ "$1" == "stop" ]]; then
-    stop_tun
-else
-    start_tun
-fi
+[ "$1" = "stop" ] && stop || start
