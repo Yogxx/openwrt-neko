@@ -1,333 +1,186 @@
 #!/bin/bash
-
-#
-# Copyright (C) 2024 Nosignal <https://github.com/nosignals>
-# 
-# Contributors:
-# - bobbyunknown <https://github.com/bobbyunknown>
-#
-# https://opensource.org/license/mit
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
+# Neko Script - FW4 Only + Bash-ready (tanpa check dependency)
 
 neko_dir="/etc/neko"
 neko_tmp_dir="$neko_dir/tmp"
 neko_core="$neko_dir/core"
 neko_bin="/usr/bin/mihomo"
 neko_www="/www/nekoclash"
-neko_config=`uci -q get neko.cfg.selected_config`
+neko_config=$(uci -q get neko.cfg.selected_config)
 
 php_bin="/usr/bin/php"
 php_address="0.0.0.0"
 php_port="8080"
 
-tun_bin="$neko_dir/core/tun"
-reload_bin="$neko_dir/core/reload"
+tun_bin="$neko_core/tun"
+reload_bin="$neko_core/reload"
 firewall="/etc/init.d/firewall"
 
 neko_log="$neko_tmp_dir/neko_log.txt"
 neko_pid_path="$neko_tmp_dir/neko_pid.txt"
-neko_status=`uci -q get neko.cfg.enabled`
 php_pid_path="$neko_tmp_dir/php_pid.txt"
-log="$neko_dir/tmp/log.txt"
+log="$neko_tmp_dir/log.txt"
 
-neko_ver(){
+# ==== Version ====
+neko_ver() {
     neko_version="1.3.0-beta"
 }
 
+# ==== Logging Function ====
 logs() {
-    echo "[ `date +%T` ] $1"
-    if [ -z $2 ]; then
-        echo "[ `date +%T` ] $1" >> $log
-    elif [ $2 -eq 2 ]; then
-        echo "[ `date +%T` ] $1" > $log
-    elif [ $2 -eq 3 ]; then
-        echo "[ `date +%T` ] $1" >> $log
+    echo "[ $(date +%T) ] $1"
+    if [[ -z "$2" ]]; then
+        echo "[ $(date +%T) ] $1" >> "$log"
+    elif [[ $2 -eq 2 ]]; then
+        echo "[ $(date +%T) ] $1" > "$log"
+    elif [[ $2 -eq 3 ]]; then
+        echo "[ $(date +%T) ] $1" >> "$log"
         exit 1
     fi
 }
 
-check_depedency() {
-    opw_version=`cat /etc/os-release | grep VERSION_ID | cut -d\" -f 2`
-    logs "- Check Depedencies : $opw_version"
-    if [[ $opw_version == 18.* ]]; then
-        req=(curl php7 php7-cgi iptables kmod-tun)
-        list=`opkg list-installed | grep -E "curl|php7|iptables|kmod-tun" | awk '{ print $1 }'`
-        for req_pkg in ${req[@]}; do
-            for lst_pkg in $list; do
-                stat=0
-                if [ ${req_pkg} == $lst_pkg ] ; then
-                    logs "- $req_pkg Installed" 1
-                    stat=0
-                    break;
-                else
-                    stat=1
-                fi
-            done
-            if [ $stat = 1 ] ; then
-                logs "- Package $req_pkg " 1
-                logs "- Installing $req_pkg "
-                opkg install $req_pkg
-            fi
-        done
-    elif [[ $opw_version == 21.* ]]; then
-        req=(curl php7 php7-cgi iptables kmod-tun)
-        list=`opkg list-installed | grep -E "curl|php7|iptables|kmod-tun" | awk '{ print $1 }'`
-        for req_pkg in ${req[@]}; do
-            for lst_pkg in $list; do
-                stat=0
-                if [ ${req_pkg} == $lst_pkg ] ; then
-                    logs "- $req_pkg Installed" 1
-                    stat=0
-                    break;
-                else
-                    stat=1
-                fi
-            done
-            if [ $stat = 1 ] ; then
-                logs "- Package $req_pkg " 1
-                logs "- Installing $req_pkg "
-                opkg install $req_pkg
-            fi
-        done
-    elif [[ $opw_version == 22.* ]]; then
-        req=(curl php8 php8-cgi firewall4 xtables-nft kmod-tun)
-        list=`opkg list-installed | grep -E "curl|php8|firewall4|kmod-tun|xtables-nft" | awk '{ print $1 }'`
-        for req_pkg in ${req[@]}; do
-            for lst_pkg in $list; do
-                stat=0
-                if [ ${req_pkg} == $lst_pkg ] ; then
-                    logs "- $req_pkg Installed" 1
-                    stat=0
-                    break;
-                else
-                    stat=1
-                fi
-            done
-            if [ $stat = 1 ] ; then
-                logs "- Package $req_pkg " 1
-                logs "- Installing $req_pkg "
-                opkg install $req_pkg
-            fi
-        done
-    elif [[ $opw_version == 23.* ]]; then
-        req=(curl php8 php8-cgi firewall4 xtables-nft kmod-tun)
-        list=`opkg list-installed | grep -E "curl|php8|firewall4|kmod-tun|xtables-nft" | awk '{ print $1 }'`
-        for req_pkg in ${req[@]}; do
-            for lst_pkg in $list; do
-                stat=0
-                if [ ${req_pkg} == $lst_pkg ] ; then
-                    logs "- $req_pkg Installed" 1
-                    stat=0
-                    break;
-                else
-                    stat=1
-                fi
-            done
-            if [ $stat = 1 ] ; then
-                logs "- Package $req_pkg " 1
-                logs "- Installing $req_pkg "
-                opkg install $req_pkg
-            fi
-        done
-    else
-        echo "Zonk."
-    fi
-}
-
-neko_start(){
+# ==== Start Neko ====
+neko_start() {
     neko_ver
     logs "Starting Neko v.$neko_version" 2
-    if [ -f "/tmp/neko/neko.bak" ]; then
-        rm -r /tmp/neko/neko.bak
-        rm -r $neko_tmp_dir/first_install.txt
-    elif [ -f "$neko_tmp_dir/first_install.txt" ]; then
-        logs "- First Install Detected."
-        rm -r $neko_tmp_dir/first_install.txt
-        logs "Neko Not Running" 3
-    else
-        logs "- Checking Package..."
-        check_depedency
-        logs "- Checking Package Done."
-    fi
-    if [ -f $neko_pid_path ] ; then
-        logs "- Neko is Running. Killing Neko PID : `cat $neko_pid_path`"
-        $tun_bin -k >> $log
-        kill `cat $neko_pid_path`
+
+    [[ -f "$neko_pid_path" ]] && { 
+        logs "- Neko is Running. Killing PID: $(cat $neko_pid_path)"
+        $tun_bin stop >> "$log"
+        kill $(cat "$neko_pid_path") 2>/dev/null
         uci set neko.cfg.enabled='0'
         uci commit neko
-        rm $neko_pid_path
-        logs "- Retry Starting Neko..."
-    fi
-    if [ -f $neko_bin ] ; then
-        rpid=`pgrep "mihomo|reload"`
-        if [[ -n $rpid ]] ; then
-            kill $rpid 
-        fi
-        rm $neko_log
+        rm -f "$neko_pid_path"
+        logs "- Restarting Neko..."
+    }
+
+    if [[ -f "$neko_bin" ]]; then
+        rpid=$(pgrep "mihomo|reload")
+        [[ -n "$rpid" ]] && kill $rpid
+        rm -f "$neko_log"
+
         logs "- Restarting Firewall"
         $firewall restart
-        $neko_bin -f $neko_config -d $neko_dir >> $neko_log &
+
+        $neko_bin -f "$neko_config" -d "$neko_dir" >> "$neko_log" &
         sleep 1
-        neko_pid=`pgrep mihomo`
-        if [[ -z $neko_pid ]]; then
+        neko_pid=$(pgrep mihomo)
+
+        if [[ -z "$neko_pid" ]]; then
             for file in "$neko_core"/*; do
-                if [ ! -x "$file" ]; then
-                    logs "- `basename $file` Binary Permission is not executable, Changing..."
-                    chmod +x "$file"
-                fi
+                [[ ! -x "$file" ]] && chmod +x "$file"
             done
             logs "- Retry Starting Neko"
-            $neko_bin -f $neko_config -d $neko_dir >> $neko_log &
+            $neko_bin -f "$neko_config" -d "$neko_dir" >> "$neko_log" &
             sleep 1
-            neko_pid=`pgrep mihomo`
+            neko_pid=$(pgrep mihomo)
         fi
-        logs "- Neko Started. PID : $neko_pid"
-        logs "- Configs : $neko_config"
-        echo $neko_pid > $neko_pid_path
-        $tun_bin -s >> $log
+
+        logs "- Neko Started. PID: $neko_pid"
+        logs "- Config: $neko_config"
+        echo "$neko_pid" > "$neko_pid_path"
+
+        # Start TUN FW4 only
+        $tun_bin >> "$log"
+
         uci set neko.cfg.enabled='1'
         uci commit neko
         service neko enable
         $reload_bin "$neko_version" > /dev/null 2>&1 &
     else
-        logs "- Core not Detected!!!"
+        logs "- Core Binary Not Found!!!"
     fi
     logs "Done"
 }
 
-php_start(){
-    logs "Checking PHP Server Status..."
-    if [ -f $php_pid_path ] ; then
-        logs "- PHP Server is Running..."
-        logs "- Destroy PHP Server. PID : `cat $php_pid_path`"
-        kill `cat $php_pid_path`
-        rm $php_pid_path
-    else  
-        logs "- PHP Server not Running..."
-    fi
-    nohup $php_bin -S $php_address:$php_port -t ${neko_www} > /dev/null 2>&1 &
-    php_pid=`pgrep php`
-    logs "- PHP Server Started. PID:$php_pid"
-    logs "- PHP Running at $php_address:$php_port"
-    echo $php_pid > $php_pid_path
-    logs "Done"
-}
-
-neko_stop(){
-    logs "Disable Neko" 2
-    $tun_bin -k >> $log
-    if [ -f $neko_pid_path ] ; then
-        logs "- Killing Neko PID : `cat $neko_pid_path`"
-        logs "- Restarting Firewall"
+# ==== Stop Neko ====
+neko_stop() {
+    logs "Stopping Neko..." 2
+    $tun_bin stop >> "$log"
+    if [[ -f "$neko_pid_path" ]]; then
+        logs "- Killing Neko PID: $(cat "$neko_pid_path")"
         $firewall restart
-        kill `cat $neko_pid_path`
-        rm $neko_pid_path
-        rpid=`pgrep "mihomo|reload"`
-        if [[ -n $rpid ]] ; then
-            kill $rpid 
-        fi
-        logs "Neko has Disabled"
-        logs "Neko Disabled." > $neko_log
+        kill $(cat "$neko_pid_path") 2>/dev/null
+        rm -f "$neko_pid_path"
+        rpid=$(pgrep "mihomo|reload")
+        [[ -n "$rpid" ]] && kill $rpid
+        logs "Neko Stopped"
+        echo "Neko Disabled." > "$neko_log"
     else
-        logs "Neko is not Running"
+        logs "Neko Not Running"
     fi
     uci set neko.cfg.enabled='0'
     uci commit neko
     service neko disable
 }
 
-neko_restart(){
-    logs "Restarting Neko" 2
+# ==== Restart Neko ====
+neko_restart() {
+    logs "Restarting Neko..." 2
     neko_start
-    logs "Restarting Neko - Done"
+    logs "Restart Complete"
 }
 
-php_stop(){
-    if [ -f $php_pid_path ] ; then
-        logs "- Killing PHP PID : `cat $php_pid_path`"
-        kill `cat $php_pid_path`
-        rm $php_pid_path
-        logs "- Done..."
-    else
-        logs "- PHP Server Not Running"
-    fi
+# ==== PHP Server Control ====
+php_start() {
+    logs "Checking PHP Server..."
+    [[ -f "$php_pid_path" ]] && { logs "- PHP Server Running. Killing PID: $(cat $php_pid_path)"; kill $(cat "$php_pid_path") 2>/dev/null; rm -f "$php_pid_path"; }
+    nohup $php_bin -S $php_address:$php_port -t "$neko_www" > /dev/null 2>&1 &
+    php_pid=$(pgrep php)
+    echo "$php_pid" > "$php_pid_path"
+    logs "- PHP Server Started. PID: $php_pid"
+    logs "- PHP Running at $php_address:$php_port"
 }
 
-neko_backup(){
-    cd $neko_dir
-    filename="neko_backup_`date +%F_%H%M%S`.tar.gz"
-    tar -czvf $filename config proxy_provider rule_provider
-    mv $filename /tmp/$filename
+php_stop() {
+    [[ -f "$php_pid_path" ]] && { logs "- Killing PHP PID: $(cat $php_pid_path)"; kill $(cat "$php_pid_path") 2>/dev/null; rm -f "$php_pid_path"; } || logs "- PHP Server Not Running"
 }
-neko_restore(){
-    cd $neko_dir
-    rm -r $neko_dir/config/*
-    rm -r $neko_dir/proxy_provider/*
-    rm -r $neko_dir/rule_provider/*
+
+# ==== Backup & Restore ====
+neko_backup() {
+    cd "$neko_dir"
+    filename="neko_backup_$(date +%F_%H%M%S).tar.gz"
+    tar -czvf "$filename" config proxy_provider rule_provider
+    mv "$filename" "/tmp/$filename"
+}
+
+neko_restore() {
+    cd "$neko_dir"
+    rm -rf config/* proxy_provider/* rule_provider/*
     tar -xzf *.tar.gz
-    rm -r *.tar.gz
+    rm -f *.tar.gz
 }
 
-cleanup(){
-    logs "Cleanup Temporary..." 2
+# ==== Cleanup ====
+cleanup() {
+    logs "Cleaning Up..." 2
     neko_stop
     php_stop
-    logs "Cleanup Done..."
+    logs "Cleanup Done"
 }
 
-while getopts ":skrpcvhbx" signal ; do
+# ==== Option Parsing ====
+while getopts ":skrpcvhbx" signal; do
     case $signal in
-        s)
-            neko_start
-            ;;
-        k)
-            neko_stop
-            ;;
-        r)
-            neko_restart
-            ;;
-        p)
-            php_start
-            ;;
-        c)
-            cleanup
-            ;;
-        b)
-            neko_backup
-            ;;
-        x)
-            neko_restore
-            ;;
-        v)
-            neko_ver
-            echo "v.$neko_version"
-            ;;
+        s) neko_start ;;
+        k) neko_stop ;;
+        r) neko_restart ;;
+        p) php_start ;;
+        c) cleanup ;;
+        b) neko_backup ;;
+        x) neko_restore ;;
+        v) neko_ver; echo "v.$neko_version" ;;
         h)
-            echo "Neko"
-            echo "      -s : Start Mihomo Proxy"
-            echo "      -p : Start PHP Server"
-            echo "      -k : Kill/Stop Mihomo Proxy"
-            echo "      -r : Restarting Mihomo Proxy"
-            echo "      -c : cleanup (kill mihomo + php server)"
-            echo "      -v : Version"
-            echo "      -h : help (this text)"
-            echo "Please Use ROOT User"
+            echo "Neko Commands:"
+            echo " -s : Start Neko Proxy"
+            echo " -p : Start PHP Server"
+            echo " -k : Stop Neko Proxy"
+            echo " -r : Restart Neko Proxy"
+            echo " -c : Cleanup (Stop Neko + PHP)"
+            echo " -b : Backup Config"
+            echo " -x : Restore Backup"
+            echo " -v : Version"
+            echo " -h : Help"
             ;;
     esac
 done
