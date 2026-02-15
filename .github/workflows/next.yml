@@ -6,6 +6,7 @@ on:
     tags:
       - 'v*'
 
+# 🔥 FIX UTAMA UNTUK ERROR RELEASE
 permissions:
   contents: write
 
@@ -17,10 +18,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # Snapshot → APK
           - name: snapshot
             sdk_path: snapshots/targets/x86/64
             pkg_type: apk
 
+          # Stable 24.10 → IPK
           - name: 24.10.0
             sdk_path: releases/24.10.0/targets/x86/64
             pkg_type: ipk
@@ -45,9 +48,13 @@ jobs:
           echo "FULL_VERSION=$FULL_VERSION" >> $GITHUB_ENV
           echo "PKG_DIR=$PKG_DIR" >> $GITHUB_ENV
 
+          echo "Detected version: $FULL_VERSION"
+
       - name: Download OpenWrt SDK
         run: |
           BASE_URL="https://downloads.openwrt.org/${{ matrix.sdk_path }}"
+          echo "Using SDK: $BASE_URL"
+
           SDK_FILE=$(curl -fsSL $BASE_URL/ | grep -o 'openwrt-sdk-[^"]*\.tar\.zst' | head -n1)
 
           if [ -z "$SDK_FILE" ]; then
@@ -55,20 +62,11 @@ jobs:
             exit 1
           fi
 
-          wget -q $BASE_URL/$SDK_FILE
+          wget -q --tries=3 --retry-connrefused $BASE_URL/$SDK_FILE
           tar --use-compress-program=unzstd -xf $SDK_FILE
 
           SDK_DIR=$(tar -tf $SDK_FILE | head -n1 | cut -f1 -d"/")
           mv "$SDK_DIR" openwrt
-
-      - name: Cache OpenWrt build directories
-        uses: actions/cache@v4
-        with:
-          path: |
-            openwrt/staging_dir
-            openwrt/build_dir
-            openwrt/dl
-          key: ${{ runner.os }}-${{ matrix.name }}-build-cache
 
       - name: Update Feeds
         run: |
@@ -77,10 +75,13 @@ jobs:
           git config --global http.version HTTP/1.1
           git config --global http.postBuffer 524288000
           git config --global core.compression 0
+          git config --global fetch.fsckObjects false
+          git config --global transfer.fsckObjects false
 
           sed -i 's/src-git /src-git --depth=1 /g' feeds.conf.default
 
           for i in 1 2 3; do
+            echo "Feed update attempt $i..."
             ./scripts/feeds update -a && break
             sleep 5
           done
@@ -99,7 +100,7 @@ jobs:
       - name: Build Package
         run: |
           cd openwrt
-          make package/luci-app-neko/compile V=s -j2
+          make package/luci-app-neko/compile V=s -j$(nproc)
 
       - name: Collect Package
         run: |
