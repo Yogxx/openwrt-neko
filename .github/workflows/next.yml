@@ -1,127 +1,138 @@
-name: Build luci-app (Stable + Snapshot)
+name: Build luci-app-neko (OpenWrt 24.10)
 
 on:
-  workflow_dispatch:
   push:
-    tags:
-      - 'v*'
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
-
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # Snapshot → APK
-          - name: snapshot
-            sdk_path: snapshots/targets/x86/64
-            pkg_type: apk
-
-          # Stable 24.10 → IPK
-          - name: 24.10.0
-            sdk_path: releases/24.10.0/targets/x86/64
-            pkg_type: ipk
+    runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+    - name: Checkout Repository
+      uses: actions/checkout@v4
 
-      - name: Install Dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y build-essential clang flex bison g++ gawk \
-          gcc-multilib g++-multilib gettext git libncurses-dev libssl-dev \
-          python3-distutils rsync unzip zlib1g-dev file wget curl zstd
+    # =========================
+    # Install Dependencies
+    # =========================
+    - name: Install Build Dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y \
+          build-essential \
+          clang flex bison g++ gawk \
+          gcc-multilib g++-multilib \
+          gettext git libncurses-dev \
+          libssl-dev python3-setuptools \
+          rsync swig unzip zlib1g-dev \
+          file wget
 
-      # 🔹 Ambil versi dari Makefile
-      - name: Get version from Makefile
-        run: |
-          VERSION=$(grep PKG_VERSION luci-app-*/Makefile | cut -d':=' -f2 | tr -d ' ')
-          RELEASE=$(grep PKG_RELEASE luci-app-*/Makefile | cut -d':=' -f2 | tr -d ' ')
-          FULL_VERSION=${VERSION}-${RELEASE}
-          echo "FULL_VERSION=$FULL_VERSION" >> $GITHUB_ENV
-          echo "Detected version: $FULL_VERSION"
+    # =========================
+    # Download OpenWrt SDK 24.10 (x86_64 generic)
+    # PKGARCH=all jadi cukup 1 SDK
+    # =========================
+    - name: Download OpenWrt 24.10 SDK
+      run: |
+        wget https://downloads.openwrt.org/releases/24.10.0/targets/x86/64/openwrt-sdk-24.10.0-x86-64_gcc-12.3.0_musl.Linux-x86_64.tar.xz
+        tar -xf openwrt-sdk-*.tar.xz
+        mv openwrt-sdk-* openwrt
 
-      # 🔹 Download SDK
-      - name: Download OpenWrt SDK
-        run: |
-          BASE_URL="https://downloads.openwrt.org/${{ matrix.sdk_path }}"
-          echo "Using SDK: $BASE_URL"
+    # =========================
+    # Setup Stable Feeds Mirror
+    # =========================
+    - name: Configure Feeds (GitHub Mirror)
+      run: |
+        cd openwrt
 
-          SDK_FILE=$(curl -s $BASE_URL/ | grep -o 'openwrt-sdk-[^"]*\.tar\.zst' | head -n 1)
+        git config --global http.postBuffer 524288000
+        git config --global core.compression 0
 
-          if [ -z "$SDK_FILE" ]; then
-            echo "❌ SDK not found"
-            exit 1
-          fi
+        rm -f feeds.conf.default
 
-          wget -q $BASE_URL/$SDK_FILE
-          tar --use-compress-program=unzstd -xf $SDK_FILE
+        cat <<EOF > feeds.conf.default
+        src-git packages https://github.com/openwrt/packages.git;openwrt-24.10
+        src-git luci https://github.com/openwrt/luci.git;openwrt-24.10
+        src-git routing https://github.com/openwrt/routing.git;openwrt-24.10
+        src-git telephony https://github.com/openwrt/telephony.git;openwrt-24.10
+        EOF
 
-          SDK_DIR=$(tar -tf $SDK_FILE | head -n1 | cut -f1 -d"/")
-          mv "$SDK_DIR" openwrt
+        ./scripts/feeds update -a
+        ./scripts/feeds install -a
 
-      # 🔥 Update Feeds (ANTI RPC FAIL + RETRY)
-      - name: Update Feeds
-        run: |
-          cd openwrt
+    # =========================
+    # Copy Package
+    # =========================
+    - name: Copy luci-app-neko into SDK
+      run: |
+        mkdir -p openwrt/package/luci-app-neko
+        cp -r ./* openwrt/package/luci-app-neko/
 
-          # Fix Git RPC issues
-          git config --global http.version HTTP/1.1
-          git config --global http.postBuffer 1048576000
+    # =========================
+    # Extract Version from Makefile
+    # =========================
+    - name: Extract Version
+      id: version
+      run: |
+        VERSION=$(grep PKG_VERSION Makefile | head -n1 | cut -d= -f2)
+        RELEASE=$(grep PKG_RELEASE Makefile | head -n1 | cut -d= -f2)
+        FULL_VERSION=${VERSION}-${RELEASE}
 
-          # Retry mechanism
-          for i in 1 2 3; do
-            echo "Feed update attempt $i..."
-            ./scripts/feeds update -a && break
-            sleep 5
-          done
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+        echo "FULL_VERSION=$FULL_VERSION" >> $GITHUB_ENV
+        echo "Detected version: $FULL_VERSION"
 
-          ./scripts/feeds install -a
+    # =========================
+    # Build Package
+    # =========================
+    - name: Build luci-app-neko
+      run: |
+        cd openwrt
+        make defconfig
+        make package/luci-app-neko/compile -j$(nproc) V=s
 
-          # Validate luci feed exists
-          if [ ! -d "feeds/luci" ]; then
-            echo "❌ LuCI feed not found"
-            exit 1
-          fi
+    # =========================
+    # Collect & Rename Output
+    # =========================
+    - name: Collect IPK
+      run: |
+        mkdir -p output
+        find openwrt/bin/packages -name "*.ipk" -type f -exec cp {} output/ \;
 
-      - name: Copy Package
-        run: |
-          cp -r luci-app-* openwrt/package/
+        cd output
+        for f in *.ipk; do
+          mv "$f" "luci-app-neko_${FULL_VERSION}.all.ipk"
+          cp "luci-app-neko_${FULL_VERSION}.all.ipk" \
+             "luci-app-neko_${VERSION}.apk"
+        done
 
-      - name: Configure SDK
-        run: |
-          cd openwrt
-          make defconfig
+    # =========================
+    # Upload Artifact
+    # =========================
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: luci-app-neko_${{ env.FULL_VERSION }}
+        path: output/*
 
-      - name: Build Package
-        run: |
-          cd openwrt
-          make package/luci-app-*/compile -j1 V=s
+    # =========================
+    # Auto Tag & Release
+    # =========================
+    - name: Create Git Tag
+      if: github.ref == 'refs/heads/main'
+      run: |
+        git config user.name "github-actions"
+        git config user.email "actions@github.com"
+        git tag -f v${VERSION}
+        git push origin v${VERSION} --force
 
-      # 🔹 Collect result
-      - name: Collect Package
-        run: |
-          mkdir -p release
-
-          if [ "${{ matrix.pkg_type }}" = "apk" ]; then
-            FILE=$(find openwrt/bin/packages -name "luci-app-*.apk" | head -n1)
-            cp "$FILE" release/luci-app_${FULL_VERSION}.apk
-          else
-            FILE=$(find openwrt/bin/packages -name "luci-app-*.ipk" | head -n1)
-            cp "$FILE" release/luci-app_${FULL_VERSION}.all.ipk
-          fi
-
-          ls -lah release
-
-      # 🔹 Upload release only on tag
-      - name: Upload Release
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          files: release/*
-          overwrite_files: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
+    - name: Create Release
+      if: github.ref == 'refs/heads/main'
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v${{ env.VERSION }}
+        name: luci-app-neko v${{ env.VERSION }}
+        files: output/*
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
