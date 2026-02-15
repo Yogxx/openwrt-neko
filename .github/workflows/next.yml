@@ -98,7 +98,8 @@ jobs:
       - name: Build Package
         run: |
           cd openwrt
-          make package/luci-app-*/compile -j$(nproc)
+          make defconfig
+          make package/luci-app-neko/compile V=s -j$(nproc)
 
       # 🔹 Collect result
       - name: Collect Package
