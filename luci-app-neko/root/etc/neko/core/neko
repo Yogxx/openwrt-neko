@@ -21,9 +21,12 @@ neko_pid_path="$neko_tmp_dir/neko_pid.txt"
 php_pid_path="$neko_tmp_dir/php_pid.txt"
 log="$neko_tmp_dir/log.txt"
 
-# ==== Version ====
 neko_ver() {
-    neko_version="1.3.0-beta"
+    neko_version="$(apk list --installed luci-app-neko 2>/dev/null \
+        | awk '{print $1}' \
+        | sed 's/^luci-app-neko-//')"
+
+    [ -z "$neko_version" ] && neko_version="unknown"
 }
 
 # ==== Logging Function ====
