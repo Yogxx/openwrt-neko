@@ -68,9 +68,4 @@ define Package/$(PKG_NAME)/install
 	$(CP) $(PKG_BUILD_DIR)/www/* $(1)/www/ || true
 endef
 
-define Package/$(PKG_NAME)/postinst
-#!/bin/sh
-exit 0
-endef
-
 $(eval $(call BuildPackage,$(PKG_NAME)))
