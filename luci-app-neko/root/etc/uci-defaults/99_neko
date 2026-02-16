@@ -7,15 +7,6 @@ tmp_dir="/tmp"
 
 echo "[ `date +%T` ] - Checking Files..."
 
-if [ -x "$neko_dir/core/neko" ]; then
-    echo "[ `date +%T` ] - Stopping Neko..."
-    "$neko_dir/core/neko" -k 2>/dev/null
-fi
-if [ -x "$neko_dir/core/singbox" ]; then
-    echo "[ `date +%T` ] - Stopping Singbox..."
-    "$neko_dir/core/singbox" -k 2>/dev/null
-fi
-
 files_check() {
     uci set uhttpd.main.index_page='index.php'
     uci set uhttpd.main.interpreter='.php=/usr/bin/php-cgi'
