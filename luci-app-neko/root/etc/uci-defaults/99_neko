@@ -7,7 +7,6 @@ tmp_dir="/tmp"
 
 echo "[ `date +%T` ] - Checking Files..."
 
-# ---- Stop Neko jika jalan ----
 if [ -x "$neko_dir/core/neko" ]; then
     echo "[ `date +%T` ] - Stopping Neko..."
     "$neko_dir/core/neko" -k 2>/dev/null
@@ -17,7 +16,6 @@ if [ -x "$neko_dir/core/singbox" ]; then
     "$neko_dir/core/singbox" -k 2>/dev/null
 fi
 
-# ---- Restore atau cek file ----
 files_check() {
     uci set uhttpd.main.index_page='index.php'
     uci set uhttpd.main.interpreter='.php=/usr/bin/php-cgi'
@@ -38,6 +36,5 @@ else
     files_check
 fi
 
-# ---- Pastikan Neko tetap disabled setelah install ----
 uci set neko.cfg.enabled='0'
 uci commit neko
