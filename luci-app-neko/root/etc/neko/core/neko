@@ -1,5 +1,5 @@
 #!/bin/bash
-# Neko Script - FW4 Only + Bash-ready (tanpa check dependency)
+# Neko Script - FW4 Only
 
 neko_dir="/etc/neko"
 neko_tmp_dir="$neko_dir/tmp"
@@ -22,9 +22,21 @@ php_pid_path="$neko_tmp_dir/php_pid.txt"
 log="$neko_tmp_dir/log.txt"
 
 neko_ver() {
-    neko_version="$(apk list --installed luci-app-neko 2>/dev/null \
-        | awk '{print $1}' \
-        | sed 's/^luci-app-neko-//')"
+    if command -v apk >/dev/null 2>&1; then
+        # OpenWrt 25.12+ (apk)
+        neko_version="$(apk list --installed luci-app-neko 2>/dev/null \
+            | awk '{print $1}' \
+            | cut -d' ' -f1 \
+            | sed 's/^luci-app-neko-//')"
+    elif command -v opkg >/dev/null 2>&1; then
+        # OpenWrt 24.10 ke bawah (opkg)
+        neko_version="$(opkg list-installed luci-app-neko 2>/dev/null \
+            | awk '{print $1}' \
+            | cut -d' ' -f1 \
+            | sed 's/^luci-app-neko-//')"
+    else
+        neko_version="unknown"
+    fi
 
     [ -z "$neko_version" ] && neko_version="unknown"
 }
