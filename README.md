@@ -21,11 +21,11 @@ Features
 
 Packages list
 ---
-| Packages | Version | Arch | Information |
-|---|---|---|---|
-| luci-app-neko | ` 1.3.0-beta ` | <div align="center"> [all_arch](https://github.com/Yogxx/openwrt-neko/releases) </div> | Include `config simple rules` files |
-| mihomo | ` 1.19.20 ` | <div align="center"> [x86](https://github.com/Yogxx/openwrt-neko/releases/tag/core_1.19.20_1.12.21)</br>[aarch64-generic](https://github.com/Yogxx/openwrt-neko/releases/tag/core_1.19.20_1.12.21) </div> | Latest stable version on [MetaCubeX](https://github.com/MetaCubeX/mihomo/releases) |
-| sing-box | ` 1.12.21 ` | <div align="center"> [sing-box core](https://github.com/Yogxx/openwrt-neko/releases/tag/core_1.19.20_1.12.21) </div> | Original [Repository](https://github.com/SagerNet/sing-box/releases) |
+| Packages | Version | Information |
+|---|---|---|
+| luci-app-neko | <div align="center"> [ ` 1.3.0-1 ` ](https://github.com/Yogxx/openwrt-neko/releases) </div> | Include `config simple rules` files |
+| mihomo | <div align="center"> [ ` 1.19.20 ` ](https://github.com/Yogxx/openwrt-neko/releases/tag/core_1.19.20_1.12.21)</div> | Latest stable version on [MetaCubeX](https://github.com/MetaCubeX/mihomo/releases) |
+| sing-box | <div align="center"> [ ` 1.12.21 ` ](https://github.com/Yogxx/openwrt-neko/releases/tag/core_1.19.20_1.12.21) </div> | Original [Repository](https://github.com/SagerNet/sing-box/releases) |
 
 Manual Installation
 ---
