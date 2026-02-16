@@ -1,86 +1,92 @@
 #!/bin/sh
 # ==========================
 # Neko Auto Firewall Reload
-# Generic multi-WAN + modem support
-# Compatible with OpenWrt x86 / ARM
+# Clean Version (fw4 reload)
 # ==========================
 
 NEKO_DIR="/etc/neko"
 TMP_DIR="$NEKO_DIR/tmp"
 LOG="$TMP_DIR/log.txt"
-COOLDOWN_FILE="$TMP_DIR/fw_last_restart"
+COOLDOWN_FILE="$TMP_DIR/fw_last_reload"
+PID_FILE="$TMP_DIR/fw_watch.pid"
 TUN_BIN="$NEKO_DIR/core/tun"
-FIREWALL="/etc/init.d/firewall"
-COOLDOWN=30  # detik
+COOLDOWN=30   # detik
 
 mkdir -p "$TMP_DIR"
 
 # --------------------------
-# Fungsi log
+# Prevent double process
+# --------------------------
+if [ -f "$PID_FILE" ]; then
+    if kill -0 "$(cat $PID_FILE)" 2>/dev/null; then
+        exit 0
+    fi
+fi
+echo $$ > "$PID_FILE"
+
+# --------------------------
+# Log function
 # --------------------------
 log_write() {
     echo "[ $(date +%T) ] $1" >> "$LOG"
-    # Batasi log max 400 baris
-    [ -f "$LOG" ] && [ "$(wc -l < "$LOG")" -gt 400 ] && tail -n 200 "$LOG" > "$LOG.tmp" && mv "$LOG.tmp" "$LOG"
+    [ -f "$LOG" ] && [ "$(wc -l < "$LOG")" -gt 400 ] && \
+        tail -n 200 "$LOG" > "$LOG.tmp" && mv "$LOG.tmp" "$LOG"
 }
 
 # --------------------------
-# Fungsi restart firewall dengan cooldown
+# Reload firewall (cooldown)
 # --------------------------
-restart_firewall() {
+reload_firewall() {
     now=$(date +%s)
     last=0
     [ -f "$COOLDOWN_FILE" ] && last=$(cat "$COOLDOWN_FILE")
 
     if [ $((now - last)) -gt $COOLDOWN ]; then
-        log_write "Restart firewall"
-        $FIREWALL restart
+        log_write "Reload firewall"
+        fw4 reload
         echo "$now" > "$COOLDOWN_FILE"
     else
-        log_write "Cooldown active, skip firewall restart"
+        log_write "Cooldown active, skip reload"
     fi
 }
 
 # --------------------------
-# Fungsi reload interface
+# Interface monitor
 # --------------------------
 neko_reload() {
-    json="$(ubus call network.interface dump)"
-
-    # Ambil semua interface WAN/logical WAN atau proto modem apapun
-    echo "$json" | jq -r '
-      .interface[]
-      | select(
-          (.interface | test("wan|wwan|pppoe")) 
-          or (.proto | test("dhcp|pppoe|modemmanager|mbim|xmm|wwan"))
-        )
-      | "\(.interface)|\(.up)|\(.uptime|floor)"
+    ubus call network.interface dump | jq -r '
+        .interface[]
+        | select(
+            (.interface | test("wan|wwan|pppoe"))
+            or (.proto | test("dhcp|pppoe|modemmanager|mbim|xmm|wwan"))
+          )
+        | "\(.interface)|\(.up)|\(.uptime|floor)"
     ' | while IFS="|" read -r iface status uptime; do
 
         FILE="/tmp/iface_$iface"
 
-        # Interface down → hapus tmp
+        # Interface down → reset
         if [ "$status" = "false" ]; then
             [ -f "$FILE" ] && rm -f "$FILE"
             continue
         fi
 
-        # Interface baru → deteksi + restart firewall
+        # Interface first detected
         if [ ! -f "$FILE" ]; then
             echo "$uptime" > "$FILE"
             log_write "Interface $iface detected"
-            restart_firewall
+            reload_firewall
             [ -x "$TUN_BIN" ] && $TUN_BIN -ks
             continue
         fi
 
-        # Cek uptime reset → restart firewall
+        # Check uptime reset
         last_uptime=$(cat "$FILE")
         echo "$uptime" > "$FILE"
 
         if [ "$uptime" -lt "$last_uptime" ]; then
             log_write "Interface $iface restarted"
-            restart_firewall
+            reload_firewall
             [ -x "$TUN_BIN" ] && $TUN_BIN -ks
         fi
     done
@@ -89,7 +95,8 @@ neko_reload() {
 # --------------------------
 # Main loop
 # --------------------------
-log_write "Auto Restart Firewall : ON"
+log_write "Auto Firewall Reload: ON"
+
 while true; do
     sleep 5
     neko_reload
