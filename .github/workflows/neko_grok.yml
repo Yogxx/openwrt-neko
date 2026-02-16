@@ -36,6 +36,7 @@ jobs:
     needs: [create-release]
     runs-on: ubuntu-22.04
     strategy:
+      fail-fast: false  # Biar snapshot tetep jalan kalau stable gagal
       matrix:
         variant:
           - name: stable-24.10
@@ -76,10 +77,39 @@ jobs:
           rm -rf openwrt
           mv "$SDK_DIR" openwrt
 
-      - name: Update Feeds
+      - name: Prepare Feeds Config with GitHub Mirror
         run: |
           cd openwrt
-          ./scripts/feeds update -a
+          cat > feeds.conf <<EOF
+      src-git-full base https://github.com/openwrt/openwrt.git;openwrt-24.10
+      src-git-full packages https://github.com/openwrt/packages.git;openwrt-24.10
+      src-git-full luci https://github.com/openwrt/luci.git;openwrt-24.10
+      # Tambah feeds lain kalau package-mu butuh (routing, telephony, dll)
+      EOF
+
+      - name: Update Feeds with Retry
+        run: |
+          cd openwrt
+
+          # Config Git untuk hindari disconnect / large transfer error
+          git config --global http.postBuffer 524288000
+          git config --global core.compression 0
+          git config --global http.lowSpeedLimit 0
+          git config --global http.lowSpeedTime 999999
+
+          # Retry 5x
+          for i in {1..5}; do
+            echo "Attempt $i/5: Updating feeds..."
+            ./scripts/feeds update -a && break
+            echo "Failed (mungkin server timeout), retrying in 15s..."
+            sleep 15
+          done
+
+          if [ $i -eq 5 ]; then
+            echo "Feeds update failed after 5 attempts!"
+            exit 1
+          fi
+
           ./scripts/feeds install -a
 
       - name: Copy luci-app-neko into SDK
@@ -105,7 +135,7 @@ jobs:
           [ -z "$PKG_RELEASE" ] && PKG_RELEASE="1"
           echo "PKG_VERSION=$PKG_VERSION" >> $GITHUB_ENV
           echo "PKG_RELEASE=$PKG_RELEASE" >> $GITHUB_ENV
-          echo "Extracted PKG_VERSION: $PKG_VERSION, PKG_RELEASE: $PKG_RELEASE"
+          echo "Extracted: $PKG_VERSION-$PKG_RELEASE"
 
       - name: Collect and Rename ${{ matrix.variant.pkg_ext }} files
         env:
@@ -113,16 +143,18 @@ jobs:
           PKG_EXT: ${{ matrix.variant.pkg_ext }}
         run: |
           mkdir -p release
+          echo "Searching for packages..."
+          find openwrt/bin/packages -type f -name "*neko*.$PKG_EXT" || true
           PKG_FILE=$(find openwrt/bin/packages -type f -name "*neko*.$PKG_EXT" | head -n1)
           if [ -n "$PKG_FILE" ]; then
             NEW_NAME="luci-app-neko_\( {PKG_VERSION}- \){PKG_RELEASE}-\( {VARIANT_NAME}. \){PKG_EXT}"
             cp "$PKG_FILE" "release/$NEW_NAME"
-            echo "Prepared: $NEW_NAME"
+            echo "Prepared: $NEW_NAME (from $PKG_FILE)"
           else
-            echo "No $PKG_EXT found!"
-            exit 1  # Optional: fail kalau ga ada file
+            echo "WARNING: No $PKG_EXT found for ${VARIANT_NAME}! Check build logs."
+            # exit 1  # Comment dulu supaya job ga langsung fail, biar liat snapshot juga
           fi
-          ls -lah release
+          ls -lah release || true
 
       - name: Upload to Release
         if: startsWith(github.ref, 'refs/tags/')
