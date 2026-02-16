@@ -1,45 +1,68 @@
 <?php
 /**
  * version.php
- * Safely get installed versions of NekoClash, Mihomo, and Singbox
+ * Universal version checker for OpenWrt 24 (opkg) & 25 (apk)
  */
 
 header('Content-Type: application/json');
 
-// -----------------------------
-// 1. NekoClash (luci-app-neko)
-// -----------------------------
-#$neko_version = exec("apk list | grep luci-app-neko | cut -d ' - ' -f3");
-#$neko_latest = exec("curl -m 5 -f -s https://raw.githubusercontent.com/Yogxx/openwrt-neko/main/luci-app-neko/Makefile | grep PKG_VERSION: | cut -d= -f2");
-$neko_version = exec("apk list --installed luci-app-neko | awk '{print $1}' | cut -d'-' -f4-");
-$neko_latest = exec("curl -m 5 -fsSL https://raw.githubusercontent.com/Yogxx/openwrt-neko/main/luci-app-neko/Makefile | awk -F':=' '/PKG_VERSION/ {print $2}'");
+/**
+ * Detect package manager
+ */
+function has_apk() {
+    return trim(shell_exec("which apk 2>/dev/null")) !== "";
+}
 
+function has_opkg() {
+    return trim(shell_exec("which opkg 2>/dev/null")) !== "";
+}
 
-// -----------------------------
-// 2. Mihomo
-// -----------------------------
-#$mihomo_version = exec("opkg list-installed | grep mihomo | cut -d ' - ' -f3");
-$mihomo_version = exec("apk list --installed mihomo | awk '{print $1}'");
-if(empty($mihomo_version)) $mihomo_version = "Not Installed";
+/**
+ * Get installed version
+ */
+function get_version($pkg) {
+    if (has_apk()) {
+        // OpenWrt 25+
+        $cmd = "apk list --installed $pkg 2>/dev/null | awk '{print \$1}' | sed 's/^$pkg-//'";
+    } elseif (has_opkg()) {
+        // OpenWrt 24
+        $cmd = "opkg list-installed 2>/dev/null | grep ^$pkg' ' | awk '{print \$3}'";
+    } else {
+        return "Unknown";
+    }
 
-// -----------------------------
-// 3. Singbox
-// -----------------------------
-#$singbox_version = exec("opkg list-installed | grep sing-box | cut -d ' - ' -f3");
-$singbox_version = exec("apk list --installed sing-box | awk '{print $1}'");
-if(empty($singbox_version)) $singbox_version = "Not Installed";
+    $version = trim(shell_exec($cmd));
+    return $version !== "" ? $version : "Not Installed";
+}
 
-// -----------------------------
-// Response JSON
-// -----------------------------
+/**
+ * Get latest Neko version from GitHub
+ */
+function get_latest_neko() {
+    $cmd = "curl -m 5 -fsSL https://raw.githubusercontent.com/Yogxx/openwrt-neko/main/luci-app-neko/Makefile 2>/dev/null | awk -F':=' '/PKG_VERSION/ {print \$2}'";
+    return trim(shell_exec($cmd));
+}
+
+/**
+ * Get versions
+ */
+$neko_version    = get_version("luci-app-neko");
+$mihomo_version  = get_version("mihomo");
+$singbox_version = get_version("sing-box");
+
+$neko_latest = get_latest_neko();
+
+/**
+ * Build response
+ */
 $response = [
     'neko' => [
-        'current' => trim($neko_version),
-        'latest'  => trim($neko_latest),
-        'needsUpdate' => (trim($neko_version) != trim($neko_latest))
+        'current'     => $neko_version,
+        'latest'      => $neko_latest,
+        'needsUpdate' => ($neko_version !== "Not Installed" && $neko_latest !== "" && $neko_version != $neko_latest)
     ],
-    'mihomo' => trim($mihomo_version),
-    'singbox' => trim($singbox_version)
+    'mihomo'  => $mihomo_version,
+    'singbox' => $singbox_version
 ];
 
 echo json_encode($response);
