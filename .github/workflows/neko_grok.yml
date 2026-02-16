@@ -5,18 +5,26 @@ permissions:
 
 on:
   workflow_dispatch:
+    inputs:
+      create_release:
+        description: 'Buat atau update GitHub Release? (untuk tes manual pilih false)'
+        required: true
+        type: boolean
+        default: false
   push:
     tags:
       - 'v*'
 
 jobs:
   create-release:
-    if: startsWith(github.ref, 'refs/tags/')
+    if: >-
+      startsWith(github.ref, 'refs/tags/') ||
+      (github.event_name == 'workflow_dispatch' && inputs.create_release == 'true')
     runs-on: ubuntu-22.04
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
-      - name: Create GitHub Release
+      - name: Create or Update Release
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
@@ -24,8 +32,8 @@ jobs:
           name: Release ${{ github.ref_name }}
           body: |
             luci-app-neko ${{ github.ref_name }}
-            - .ipk for OpenWrt 24.10 (opkg)
-            - .apk for OpenWrt Snapshot (apk)
+            - .ipk untuk OpenWrt 24.10 (opkg)
+            - .apk untuk OpenWrt Snapshot (apk)
           draft: false
           prerelease: false
           generate_release_notes: true
@@ -33,7 +41,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build:
-    needs: create-release
+    needs: [create-release]
     runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
@@ -59,11 +67,11 @@ jobs:
             gcc-multilib g++-multilib gettext git libncurses-dev libssl-dev \
             python3-distutils rsync unzip zlib1g-dev file wget curl zstd
 
-      - name: Download and extract OpenWrt SDK
+      - name: Download OpenWrt SDK
         run: |
           if [ "${{ matrix.variant.name }}" = "snapshot" ]; then
             BASE_URL="https://downloads.openwrt.org/snapshots/targets/x86/64"
-            SDK_FILE=$(curl -s "$BASE_URL/" | grep -o 'openwrt-sdk[^"]*\.tar\.zst' | head -n1)
+            SDK_FILE=$(curl -s "$BASE_URL/" | grep -o 'openwrt-sdk[^"]*\.tar\.zst' | head -n 1)
             SDK_URL="$BASE_URL/$SDK_FILE"
           else
             SDK_URL="${{ matrix.variant.sdk_url }}"
@@ -71,12 +79,14 @@ jobs:
 
           echo "Downloading SDK: $SDK_URL"
           wget -O sdk.tar.zst "$SDK_URL"
+
           tar --use-compress-program=unzstd -xf sdk.tar.zst
+
           SDK_DIR=$(tar -tf sdk.tar.zst | head -n1 | cut -f1 -d"/")
           rm -rf openwrt
           mv "$SDK_DIR" openwrt
 
-      - name: Prepare feeds.conf (GitHub mirrors)
+      - name: Prepare feeds.conf with GitHub mirror
         run: |
           cd openwrt
           cat > feeds.conf <<EOF
@@ -85,14 +95,15 @@ jobs:
           src-git-full luci https://github.com/openwrt/luci.git;openwrt-24.10
           EOF
 
-      - name: Update and install feeds with retries
+      - name: Update feeds with retry
         run: |
           cd openwrt
+
           git config --global http.postBuffer 524288000
           git config --global core.compression 0
 
           for attempt in {1..5}; do
-            echo "Feeds update attempt $attempt/5..."
+            echo "Attempt $attempt/5: Updating feeds..."
             ./scripts/feeds update -a && break
             echo "Failed, retrying in 15s..."
             sleep 15
@@ -105,19 +116,20 @@ jobs:
 
           ./scripts/feeds install -a
 
-      - name: Patch pcre2 CMakeLists.txt (CMake 4+ fix)
+      - name: Patch pcre2 CMakeLists.txt for CMake compatibility
         run: |
           cd openwrt
-          PCRE2_FILE="feeds/base/package/libs/pcre2/src/CMakeLists.txt"
-          if [ -f "$PCRE2_FILE" ]; then
-            sed -i 's/cmake_minimum_required(VERSION [0-9.]\+)/cmake_minimum_required(VERSION 3.5...4.0)/' "$PCRE2_FILE"
+          PCRE2_CMAKELISTS="feeds/base/package/libs/pcre2/src/CMakeLists.txt"
+          if [ -f "$PCRE2_CMAKELISTS" ]; then
+            sed -i 's/cmake_minimum_required(VERSION [0-9.]\+)/cmake_minimum_required(VERSION 3.5...4.0)/' "$PCRE2_CMAKELISTS"
             echo "Patched pcre2 CMakeLists.txt"
           else
-            echo "pcre2 CMakeLists.txt not found, skipping patch"
+            echo "pcre2 CMakeLists.txt not found — using CMAKE_FLAGS fallback"
           fi
 
-      - name: Copy custom luci-app-neko package
-        run: cp -r "$GITHUB_WORKSPACE/luci-app-neko" openwrt/package/
+      - name: Copy luci-app-neko package
+        run: |
+          cp -r "$GITHUB_WORKSPACE/luci-app-neko" openwrt/package/
 
       - name: Configure SDK
         run: |
@@ -127,41 +139,43 @@ jobs:
       - name: Build luci-app-neko
         run: |
           cd openwrt
-          echo "Building with CMake policy fix..."
+          echo "Building with CMake policy workaround..."
           make package/luci-app-neko/compile V=s -j$(nproc) \
-            CMAKE_FLAGS="-DCMAKE_POLICY_VERSION_MINIMUM=3.5" \
+            CMAKE_FLAGS="-DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_POLICY_DEFAULT_CMP0148=OLD" \
             || make package/luci-app-neko/compile V=s -j1 \
-              CMAKE_FLAGS="-DCMAKE_POLICY_VERSION_MINIMUM=3.5"
+              CMAKE_FLAGS="-DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_POLICY_DEFAULT_CMP0148=OLD"
 
-      - name: Extract package version
+      - name: Extract version from Makefile
         run: |
           MAKEFILE="openwrt/package/luci-app-neko/Makefile"
           PKG_VERSION=$(grep '^PKG_VERSION:=' "$MAKEFILE" | cut -d '=' -f2 | tr -d ' ')
           PKG_RELEASE=$(grep '^PKG_RELEASE:=' "$MAKEFILE" | cut -d '=' -f2 | tr -d ' ')
-          PKG_VERSION=${PKG_VERSION:-unknown}
-          PKG_RELEASE=${PKG_RELEASE:-1}
+          [ -z "$PKG_VERSION" ] && PKG_VERSION="unknown"
+          [ -z "$PKG_RELEASE" ] && PKG_RELEASE="1"
           echo "PKG_VERSION=$PKG_VERSION" >> $GITHUB_ENV
           echo "PKG_RELEASE=$PKG_RELEASE" >> $GITHUB_ENV
-          echo "Extracted version: $PKG_VERSION-$PKG_RELEASE"
+          echo "Version: $PKG_VERSION-$PKG_RELEASE"
 
-      - name: Collect and rename built package
+      - name: Collect and rename package
         env:
           VARIANT_NAME: ${{ matrix.variant.name }}
           PKG_EXT: ${{ matrix.variant.pkg_ext }}
         run: |
           mkdir -p release
+          echo "Mencari file paket..."
+          find openwrt/bin/packages -type f -name "*neko*.$PKG_EXT" || true
           PKG_FILE=$(find openwrt/bin/packages -type f -name "*neko*.$PKG_EXT" | head -n1)
           if [ -n "$PKG_FILE" ]; then
-            NEW_NAME="luci-app-neko_${PKG_VERSION}-${PKG_RELEASE}-${VARIANT_NAME}.$PKG_EXT"
+            NEW_NAME="luci-app-neko_\( {PKG_VERSION}- \){PKG_RELEASE}-\( {VARIANT_NAME}. \){PKG_EXT}"
             cp "$PKG_FILE" "release/$NEW_NAME"
-            echo "Package prepared: $NEW_NAME"
+            echo "Berhasil: $NEW_NAME"
           else
-            echo "No $PKG_EXT package found for variant $VARIANT_NAME"
+            echo "Tidak menemukan paket .$PKG_EXT untuk ${VARIANT_NAME}"
           fi
           ls -lah release || true
 
-      - name: Upload artifacts to release
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Upload to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.create_release == 'true')
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
@@ -169,4 +183,3 @@ jobs:
           overwrite: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
