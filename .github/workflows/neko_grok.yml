@@ -82,7 +82,7 @@ jobs:
 
           tar --use-compress-program=unzstd -xf sdk.tar.zst
 
-          SDK_DIR=$(tar -tf sdk.tar.zst | head -n1 | cut -f1 -d"/")
+          SDK_DIR=$(tar -tf sdk.tar.zst | head -n 1 | cut -f1 -d"/")
           rm -rf openwrt
           mv "$SDK_DIR" openwrt
 
@@ -95,21 +95,21 @@ jobs:
           src-git-full luci https://github.com/openwrt/luci.git;openwrt-24.10
           EOF
 
-      - name: Update feeds with retry
+      - name: Update feeds with retry mechanism
         run: |
           cd openwrt
 
           git config --global http.postBuffer 524288000
           git config --global core.compression 0
 
-          for attempt in {1..5}; do
-            echo "Attempt $attempt/5: Updating feeds..."
+          for i in {1..5}; do
+            echo "Attempt $i/5: Updating feeds..."
             ./scripts/feeds update -a && break
             echo "Failed, retrying in 15s..."
             sleep 15
           done
 
-          if [ $attempt -eq 5 ]; then
+          if [ $i -eq 5 ]; then
             echo "Feeds update failed after 5 attempts"
             exit 1
           fi
@@ -154,7 +154,7 @@ jobs:
           [ -z "$PKG_RELEASE" ] && PKG_RELEASE="1"
           echo "PKG_VERSION=$PKG_VERSION" >> $GITHUB_ENV
           echo "PKG_RELEASE=$PKG_RELEASE" >> $GITHUB_ENV
-          echo "Version: $PKG_VERSION-$PKG_RELEASE"
+          echo "Version extracted: $PKG_VERSION-$PKG_RELEASE"
 
       - name: Collect and rename package
         env:
@@ -168,7 +168,7 @@ jobs:
           if [ -n "$PKG_FILE" ]; then
             NEW_NAME="luci-app-neko_\( {PKG_VERSION}- \){PKG_RELEASE}-\( {VARIANT_NAME}. \){PKG_EXT}"
             cp "$PKG_FILE" "release/$NEW_NAME"
-            echo "Berhasil: $NEW_NAME"
+            echo "Berhasil rename: $NEW_NAME"
           else
             echo "Tidak menemukan paket .$PKG_EXT untuk ${VARIANT_NAME}"
           fi
