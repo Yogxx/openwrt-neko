@@ -1,0 +1,86 @@
+name: Build luci-app-neko next
+
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  create-release:
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-22.04
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          body: |
+            luci-app-neko ${{ github.ref_name }}
+            - .ipk for OpenWrt 24.10 (opkg)
+            - .apk for OpenWrt Snapshot (apk)
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build:
+    needs: [create-release]
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        variant:
+          - name: stable-24.10
+            sdk_url: "https://downloads.openwrt.org/releases/24.10.5/targets/x86/64/openwrt-sdk-24.10.5-x86-64_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
+            pkg_ext: "ipk"
+            desc: "OpenWrt 24.10 Stable (.ipk)"
+          - name: snapshot
+            sdk_url: ""
+            pkg_ext: "apk"
+            desc: "OpenWrt Snapshot (.apk)"
+
+    steps:
+      - uses: actions/checkout@v4
+
+
+      - name: Extract Version from Makefile
+        run: |
+          MAKEFILE="openwrt/package/luci-app-neko/Makefile"
+          PKG_VERSION=$(grep '^PKG_VERSION:=' "$MAKEFILE" | cut -d '=' -f2 | tr -d ' ')
+          PKG_RELEASE=$(grep '^PKG_RELEASE:=' "$MAKEFILE" | cut -d '=' -f2 | tr -d ' ')
+          [ -z "$PKG_VERSION" ] && PKG_VERSION="unknown"
+          [ -z "$PKG_RELEASE" ] && PKG_RELEASE="1"
+          echo "PKG_VERSION=$PKG_VERSION" >> $GITHUB_ENV
+          echo "PKG_RELEASE=$PKG_RELEASE" >> $GITHUB_ENV
+
+      - name: Collect and Rename ${{ matrix.variant.pkg_ext }} files
+        run: |
+          mkdir -p release
+          PKG_FILE=\( (find openwrt/bin/packages -type f -name "*neko*. \){{ matrix.variant.pkg_ext }}" | head -n1)
+          if [ -n "$PKG_FILE" ]; then
+            NEW_NAME="luci-app-neko_\( {{ env.PKG_VERSION }}- \){{ env.PKG_RELEASE }}-\( {{ matrix.variant.name }}. \){{ matrix.variant.pkg_ext }}"
+            cp "$PKG_FILE" "release/$NEW_NAME"
+            echo "Prepared: $NEW_NAME"
+          else
+            echo "No ${{ matrix.variant.pkg_ext }} found!"
+            exit 1  # Optional: fail kalau ga ada file
+          fi
+          ls -lah release
+
+      - name: Upload to Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: release/*.${{ matrix.variant.pkg_ext }}
+          overwrite: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
