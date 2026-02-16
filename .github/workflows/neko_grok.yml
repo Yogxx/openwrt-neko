@@ -76,10 +76,20 @@ jobs:
           rm -rf openwrt
           mv "$SDK_DIR" openwrt
 
-      - name: Update Feeds
+      - name: Update Feeds (with retry & buffer fix)
         run: |
           cd openwrt
-          ./scripts/feeds update -a
+          # Git config agar tidak mudah putus
+          git config --global http.postBuffer 524288000
+          git config --global http.maxRequestBuffer 100M
+          git config --global core.compression 0
+          git config --global fetch.recurseSubmodules false
+          # Retry shallow update feeds
+          MAX_RETRIES=3
+          for i in $(seq 1 $MAX_RETRIES); do
+            ./scripts/feeds update -a --depth=1 && break || \
+            echo "Retry $i/$MAX_RETRIES..." && sleep 5
+          done
           ./scripts/feeds install -a
 
       - name: Copy luci-app-neko into SDK
@@ -115,12 +125,12 @@ jobs:
           mkdir -p release
           PKG_FILE=$(find openwrt/bin/packages -type f -name "*neko*.$PKG_EXT" | head -n1)
           if [ -n "$PKG_FILE" ]; then
-            NEW_NAME="luci-app-neko_\( {PKG_VERSION}- \){PKG_RELEASE}-\( {VARIANT_NAME}. \){PKG_EXT}"
+            NEW_NAME="luci-app-neko_${PKG_VERSION}-${PKG_RELEASE}-${VARIANT_NAME}.${PKG_EXT}"
             cp "$PKG_FILE" "release/$NEW_NAME"
             echo "Prepared: $NEW_NAME"
           else
             echo "No $PKG_EXT found!"
-            exit 1  # Optional: fail kalau ga ada file
+            exit 1
           fi
           ls -lah release
 
@@ -133,3 +143,4 @@ jobs:
           overwrite: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
