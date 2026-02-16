@@ -21,9 +21,24 @@ neko_pid_path="$neko_tmp_dir/neko_pid.txt"
 php_pid_path="$neko_tmp_dir/php_pid.txt"
 log="$neko_tmp_dir/log.txt"
 
-# ==== Version ====
 neko_ver() {
-    neko_version="1.3.0"
+    if command -v apk >/dev/null 2>&1; then
+        # OpenWrt 25.12+ (apk)
+        neko_version="$(apk list --installed luci-app-neko 2>/dev/null \
+            | awk '{print $1}' \
+            | cut -d' ' -f1 \
+            | sed 's/^luci-app-neko-//')"
+    elif command -v opkg >/dev/null 2>&1; then
+        # OpenWrt 24.10 ke bawah (opkg)
+        neko_version="$(opkg list-installed luci-app-neko 2>/dev/null \
+            | awk '{print $1}' \
+            | cut -d' ' -f1 \
+            | sed 's/^luci-app-neko-//')"
+    else
+        neko_version="unknown"
+    fi
+
+    [ -z "$neko_version" ] && neko_version="unknown"
 }
 
 # ==== Logging Function ====
