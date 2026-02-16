@@ -81,11 +81,10 @@ jobs:
         run: |
           cd openwrt
           cat > feeds.conf <<EOF
-      src-git-full base https://github.com/openwrt/openwrt.git;openwrt-24.10
-      src-git-full packages https://github.com/openwrt/packages.git;openwrt-24.10
-      src-git-full luci https://github.com/openwrt/luci.git;openwrt-24.10
-      # Tambah feeds lain kalau package-mu butuh (routing, telephony, dll)
-      EOF
+          src-git-full base https://github.com/openwrt/openwrt.git;openwrt-24.10
+          src-git-full packages https://github.com/openwrt/packages.git;openwrt-24.10
+          src-git-full luci https://github.com/openwrt/luci.git;openwrt-24.10
+          EOF
 
       - name: Update Feeds with Retry
         run: |
