@@ -1,4 +1,4 @@
-name: Build luci-app-neko next
+name: Build luci-app-neko new
 
 permissions:
   contents: write
@@ -33,7 +33,15 @@ jobs:
 
     strategy:
       matrix:
-        variant: ${{ fromJson( (github.event_name == 'push' || github.event.inputs.build_variant == 'both') && '[ {"name": "stable-24.10", "sdk_url": "https://downloads.openwrt.org/releases/24.10.5/targets/x86/64/openwrt-sdk-24.10.5-x86-64_gcc-13.3.0_musl.Linux-x86_64.tar.zst", "pkg_ext": "ipk"}, {"name": "snapshot", "sdk_url": "", "pkg_ext": "apk"} ]' || (github.event.inputs.build_variant == 'ipk only') && '[ {"name": "stable-24.10", "sdk_url": "https://downloads.openwrt.org/releases/24.10.5/targets/x86/64/openwrt-sdk-24.10.5-x86-64_gcc-13.3.0_musl.Linux-x86_64.tar.zst", "pkg_ext": "ipk"} ]' || (github.event.inputs.build_variant == 'apk only') && '[ {"name": "snapshot", "sdk_url": "", "pkg_ext": "apk"} ]' || '[]' ) }}
+        variant: ${{ fromJson(
+          (github.event_name == 'push' || github.event.inputs.build_variant == 'both') && 
+          '[{"name":"stable-24.10","sdk_url":"https://downloads.openwrt.org/releases/24.10.5/targets/x86/64/openwrt-sdk-24.10.5-x86-64_gcc-13.3.0_musl.Linux-x86_64.tar.zst","pkg_ext":"ipk"},{"name":"snapshot","sdk_url":"","pkg_ext":"apk"}]' ||
+          (github.event.inputs.build_variant == 'ipk only') && 
+          '[{"name":"stable-24.10","sdk_url":"https://downloads.openwrt.org/releases/24.10.5/targets/x86/64/openwrt-sdk-24.10.5-x86-64_gcc-13.3.0_musl.Linux-x86_64.tar.zst","pkg_ext":"ipk"}]' ||
+          (github.event.inputs.build_variant == 'apk only') && 
+          '[{"name":"snapshot","sdk_url":"","pkg_ext":"apk"}]' ||
+          '[]'
+        ) }}
 
     steps:
       - uses: actions/checkout@v4
@@ -49,7 +57,7 @@ jobs:
         run: |
           if [ "${{ matrix.variant.name }}" = "snapshot" ]; then
             BASE_URL="https://downloads.openwrt.org/snapshots/targets/x86/64"
-            SDK_FILE=$(curl -s $BASE_URL/ | grep -o 'openwrt-sdk[^"]*\.tar\.zst' | head -n 1)
+            SDK_FILE=$(curl -s $BASE_URL/ | grep -o 'openwrt-sdk[^"]*\.tar\.zst' | head -n1)
             SDK_URL="$BASE_URL/$SDK_FILE"
           else
             SDK_URL="${{ matrix.variant.sdk_url }}"
@@ -57,7 +65,6 @@ jobs:
 
           echo "Downloading: $SDK_URL"
           wget -O sdk.tar.zst "$SDK_URL"
-
           tar --use-compress-program=unzstd -xf sdk.tar.zst
           SDK_DIR=$(tar -tf sdk.tar.zst | head -n1 | cut -f1 -d"/")
           mv "$SDK_DIR" openwrt
@@ -95,12 +102,12 @@ jobs:
 
           echo "PKG_VERSION=$PKG_VERSION" >> $GITHUB_ENV
           echo "PKG_RELEASE=$PKG_RELEASE" >> $GITHUB_ENV
-          echo "TAG_NAME=v\( {PKG_VERSION}- \){PKG_RELEASE}" >> $GITHUB_ENV
+          echo "TAG_NAME=v${PKG_VERSION}-${PKG_RELEASE}" >> $GITHUB_ENV
 
       - name: Collect package
         run: |
           mkdir -p release
-          PKG_FILE=\( (find openwrt/bin/packages -type f -name "*neko*. \){{ matrix.variant.pkg_ext }}" | head -n1)
+          PKG_FILE=$(find openwrt/bin/packages -type f -name "*neko*.${{ matrix.variant.pkg_ext }}" | head -n1)
 
           if [ -z "$PKG_FILE" ]; then
             echo "Package not found!"
@@ -108,9 +115,9 @@ jobs:
           fi
 
           if [ "${{ matrix.variant.pkg_ext }}" = "ipk" ]; then
-            NEW_NAME="luci-app-neko_\( {PKG_VERSION}- \){PKG_RELEASE}.all.ipk"
+            NEW_NAME="luci-app-neko_${PKG_VERSION}-${PKG_RELEASE}.all.ipk"
           else
-            NEW_NAME="luci-app-neko_\( {PKG_VERSION}- \){PKG_RELEASE}.apk"
+            NEW_NAME="luci-app-neko_${PKG_VERSION}-${PKG_RELEASE}.apk"
           fi
 
           cp "$PKG_FILE" "release/$NEW_NAME"
@@ -155,13 +162,13 @@ jobs:
           if [ "${{ github.event_name }}" = "push" ]; then
             echo "TAG_NAME=${{ github.ref_name }}" >> $GITHUB_ENV
           else
-            echo "TAG_NAME=v\( {PKG_VERSION}- \){PKG_RELEASE}" >> $GITHUB_ENV
+            echo "TAG_NAME=v${PKG_VERSION}-${PKG_RELEASE}" >> $GITHUB_ENV
           fi
 
       - name: Prepare release body
         run: |
-          IPK_NAME="luci-app-neko_\( {PKG_VERSION}- \){PKG_RELEASE}.all.ipk"
-          APK_NAME="luci-app-neko_\( {PKG_VERSION}- \){PKG_RELEASE}.apk"
+          IPK_NAME="luci-app-neko_${PKG_VERSION}-${PKG_RELEASE}.all.ipk"
+          APK_NAME="luci-app-neko_${PKG_VERSION}-${PKG_RELEASE}.apk"
 
           echo "luci-app-neko ${{ env.TAG_NAME }}" > body.txt
           echo "" >> body.txt
@@ -190,3 +197,4 @@ jobs:
           draft: false
           prerelease: false
           files: release/*
+          
