@@ -62,6 +62,10 @@ jobs:
       - name: Update Feeds
         run: |
           cd openwrt
+          git config --global http.postBuffer 524288000
+          git config --global http.maxRequestBuffer 100M
+          git config --global core.compression 0
+          rm -rf feeds/packages feeds/luci feeds/base
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
