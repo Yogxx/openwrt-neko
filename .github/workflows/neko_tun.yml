@@ -62,10 +62,8 @@ jobs:
       - name: Update Feeds
         run: |
           cd openwrt
-          rm -rf feeds/packages feeds/luci feeds/base
-          git clone --depth=1 https://git.openwrt.org/feed/base.git feeds/base
-          git clone --depth=1 https://git.openwrt.org/feed/packages.git feeds/packages
-          git clone --depth=1 https://git.openwrt.org/project/luci.git feeds/luci
+          #rm -rf feeds/packages feeds/luci feeds/base
+          ./scripts/feeds update -a
           ./scripts/feeds install -a
 
       - name: Copy luci-app-neko into SDK
