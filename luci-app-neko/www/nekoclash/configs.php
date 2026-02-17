@@ -1,30 +1,4 @@
 <?php
-/**
- * MIT License
- *
- * Copyright (c) 2024 Nosignal <https://github.com/nosignals>
- * 
- * Contributors:
- * - bobbyunknown <https://github.com/bobbyunknown>
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
 
 include './cfg.php';
 include './manager.php';
@@ -98,7 +72,11 @@ if(isset($_POST['clashconfig'])){
 }
 if(isset($_POST['neko'])){
     $dt = $_POST['neko'];
-    if ($dt == 'apply') shell_exec("$neko_dir/core/neko -r");
+
+    if ($dt == 'apply') {
+        shell_exec("/etc/init.d/neko restart 2>&1");
+        sleep(1);
+    }
 }
 
 if(isset($_POST['rulescfg'])){
@@ -126,6 +104,10 @@ if(isset($_POST["path_selector"])) {
         ]);
         exit;
     } 
+    
+    if ($_POST['path_selector'] == 'BACKUP CONFIG') {
+        die("BACKUP TRIGGERED");
+    }
     
     if ($_POST['path_selector'] == 'BACKUP CONFIG') {
         backupConfig();
@@ -792,22 +774,34 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
             method: 'POST',
             body: formData
         })
-        .then(response => {
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/x-gzip')) {
-                return response.blob().then(blob => {
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'neko_backup.tar.gz';
-                    document.body.appendChild(a);
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-                    document.body.removeChild(a);
-                });
+.then(response => {
+    const disposition = response.headers.get("content-disposition");
+
+    if (disposition && disposition.includes("filename=")) {
+
+        return response.blob().then(blob => {
+
+            let fileName = "backup.tar.gz";
+
+            const fileNameMatch = disposition.match(/filename="?([^"]+)"?/);
+            if (fileNameMatch && fileNameMatch.length > 1) {
+                fileName = fileNameMatch[1];
             }
-            return response.json();
-        })
+
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        });
+    }
+
+    return response.json();
+})
         .then(data => {
             if (data && data.status) {
                 Swal.fire({
