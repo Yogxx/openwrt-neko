@@ -1,30 +1,4 @@
 <?php
-/**
- * MIT License
- *
- * Copyright (c) 2024 Nosignal <https://github.com/nosignals>
- * 
- * Contributors:
- * - bobbyunknown <https://github.com/bobbyunknown>
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
 
 ob_start();
 include './cfg.php';
@@ -207,125 +181,81 @@ function formatSize($bytes) {
   }
 }
 
-function restore_controller(){
-  $target_file = "/etc/neko/" . basename($_FILES["file_upload"]["name"]);
-  $upload_stat = 1;
-  $fileType = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
-  $str_prnt = "";
-  if ($fileType !== 'gz') {
-    $str_prnt = "</br>Only <b>.tar.gz</b> files are allowed.";
-    $upload_stat = 0;
-  }
-  if (strpos($target_file, ' ') !== false) {
-    $str_prnt = "</br>File names with spaces are not allowed.";
-    $upload_stat = 0;
-  }
-  if ($upload_stat == 0) {
-    echo $str_prnt."</br>File not uploaded.";
-    return $target_file."tmp.gz";
-  }
-  else {
-    if (move_uploaded_file($_FILES["file_upload"]["tmp_name"], $target_file)) {
-      echo "</br>File <b>" . htmlspecialchars(basename($_FILES["file_upload"]["name"])) . "</b> has been uploaded.</br>";
-      return $target_file;
-    } 
-    else {
-      echo "ERROR uploading your files.";
-    }
-  }
-}
-
 function backupConfig(){
-    try {
-        while (ob_get_level()) {
-            ob_end_clean();
-        }
-        
-        shell_exec("/etc/neko/core/neko -b");
-        
-        sleep(1);
-        
-        $backup_files = glob("/tmp/neko_backup_*.tar.gz");
-        if (empty($backup_files)) {
-            throw new Exception('Backup file not found');
-        }
-        
-        usort($backup_files, function($a, $b) {
-            return filemtime($b) - filemtime($a);
-        });
-        $file_path = $backup_files[0];
-        
-        if (!file_exists($file_path)) {
-            throw new Exception('Backup file not found or not accessible');
-        }
+    while (ob_get_level()) ob_end_clean();
 
-        header('Content-Description: File Transfer');
-        header('Content-Type: application/x-gzip');
-        header('Content-Disposition: attachment; filename="'.basename($file_path).'"');
-        header('Content-Transfer-Encoding: binary');
-        header('Expires: 0');
-        header('Cache-Control: must-revalidate');
-        header('Pragma: public');
-        header('Content-Length: ' . filesize($file_path));
-        
-        if (!readfile($file_path)) {
-            throw new Exception('Failed to send file');
-        }
-        
-        foreach ($backup_files as $old_file) {
-            if ($old_file != $file_path) {
-                @unlink($old_file);
-            }
-        }
-        
-        @unlink($file_path);
-        exit;
-        
-    } catch (Exception $e) {
-        header('Content-Type: application/json');
-        echo json_encode([
-            'status' => 'error',
-            'title' => 'Error!',
-            'message' => $e->getMessage(),
-            'icon' => 'error'
-        ]);
-        exit;
+    $backup_name = "neko_backup_" . date("Y-m-d_H-i-s") . ".tar.gz";
+    $backup_path = "/tmp/" . $backup_name;
+
+    // Buat arsip backup
+    shell_exec("tar -czf $backup_path -C /etc/neko config proxy_provider rule_provider 2>/dev/null");
+
+    if (!file_exists($backup_path)) {
+        header("Content-Type: text/plain");
+        die("Backup file not created.");
     }
+
+    header('Content-Description: File Transfer');
+    header('Content-Type: application/gzip');
+    header("Content-Disposition: attachment; filename=\"$backup_name\"");
+    header('Content-Length: ' . filesize($backup_path));
+    header('Cache-Control: must-revalidate');
+    header('Pragma: public');
+
+    readfile($backup_path);
+    unlink($backup_path);
+    exit;
 }
 
 function restoreConfig(){
-    $str = restore_controller();
-    if (file_exists($str)){
-        shell_exec("/etc/neko/core/neko -x");
-        $filename = basename($str);
-        $response = array(
-            'status' => 'success',
-            'file' => $filename,
-            'message' => "Configuration from $filename has been restored successfully"
-        );
-    } else {
-        $response = array(
-            'status' => 'error',
-            'message' => 'Failed to restore configuration'
-        );
+
+    if (!isset($_FILES["file_upload"])) {
+        die("No file uploaded");
     }
-    
-    ob_clean();
-    header('Content-Type: application/json');
-    echo json_encode($response, JSON_UNESCAPED_SLASHES);
+
+    $tmp_name = $_FILES["file_upload"]["tmp_name"];
+    $file_name = basename($_FILES["file_upload"]["name"]);
+
+    // Validasi ekstensi
+    if (pathinfo($file_name, PATHINFO_EXTENSION) != "gz") {
+        die("Only .tar.gz allowed");
+    }
+
+    $restore_path = "/tmp/" . $file_name;
+
+    if (!move_uploaded_file($tmp_name, $restore_path)) {
+        die("Upload failed");
+    }
+
+    // 🔵 OPTIONAL (recommended) hapus folder lama dulu supaya bersih
+    shell_exec("rm -rf /etc/neko/config /etc/neko/proxy_provider /etc/neko/rule_provider 2>/dev/null");
+
+    // 🔵 Extract langsung ke /etc/neko
+    shell_exec("tar -xzf $restore_path -C /etc/neko 2>/dev/null");
+
+    unlink($restore_path);
+
+    // Restart service supaya config baru terload
+    shell_exec("/etc/init.d/neko restart 2>&1");
+
+    echo json_encode([
+        "status" => "success",
+        "message" => "Restore berhasil & service direstart"
+    ]);
+
     exit;
 }
 
 if(isset($_POST["path_selector"])) {
-    if ($_POST['path_selector'] == 'Option') {
-        echo "Please, select the correct Options!!!";
-    } elseif ($_POST['path_selector'] == 'BACKUP CONFIG') {
+
+    if ($_POST['path_selector'] === 'BACKUP CONFIG') {
         backupConfig();
-    } elseif ($_POST['path_selector'] == 'RESTORE CONFIG') {
-        restoreConfig();
-    } else {
-        up_controller($_POST['path_selector']);
     }
+
+    if ($_POST['path_selector'] === 'RESTORE CONFIG') {
+        restoreConfig();
+    }
+
 }
 
 if(isset($_POST["file_action"])) {

@@ -1,333 +1,284 @@
 <?php
-/**
- * MIT License
- *
- * Copyright (c) 2024 Nosignal <https://github.com/nosignals>
- * 
- * Contributors:
- * - bobbyunknown <https://github.com/bobbyunknown>
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 include './cfg.php';
 include './devinfo.php';
-$str_cfg=substr($selected_config, strlen("$neko_dir/config")+1);
+
+$str_cfg   = substr($selected_config, strlen("$neko_dir/config") + 1);
 $core_mode = exec("uci -q get neko.cfg.core_mode");
 
-if(isset($_POST['neko'])){
-    $dt = $_POST['neko'];
-    if ($core_mode == 'mihomo') {
-        if ($dt == 'start') shell_exec("$neko_dir/core/neko -s");
-        if ($dt == 'disable') shell_exec("$neko_dir/core/neko -k");
-        if ($dt == 'restart') shell_exec("$neko_dir/core/neko -r");
-        if ($dt == 'clear') {
-            shell_exec("echo 'Log cleared...' > $neko_dir/tmp/log.txt");
-            shell_exec("echo 'Log cleared...' > $neko_dir/tmp/neko_log.txt");
-        }
-    } elseif ($core_mode == 'singbox') {
-        if ($dt == 'start') shell_exec("$neko_dir/core/singbox -s");
-        if ($dt == 'disable') shell_exec("$neko_dir/core/singbox -k");
-        if ($dt == 'restart') shell_exec("$neko_dir/core/singbox -r");
-        if ($dt == 'clear') {
-            shell_exec("echo 'Log cleared...' > $neko_dir/tmp/log.txt");
-            shell_exec("echo 'Log cleared...' > $neko_dir/tmp/singbox_log.txt");
-        }
+// ================= ACTION =================
+if (isset($_POST['neko'])) {
+
+    $allowed = ['start','disable','restart'];
+    $action  = $_POST['neko'];
+
+    if (in_array($action,$allowed)) {
+
+        $map = [
+            'start'   => 'start',
+            'disable' => 'stop',
+            'restart' => 'restart'
+        ];
+
+        shell_exec("/etc/init.d/neko {$map[$action]}");
     }
 }
-$neko_status=exec("uci -q get neko.cfg.enabled");
 
-if ($core_mode == 'mihomo') {
-    $binary_log = "$neko_dir/tmp/mihomo_log.txt";
-} elseif ($core_mode == 'singbox') {
-    $binary_log = "$neko_dir/tmp/singbox_log.txt";
-}
+// ================= STATUS =================
+$status_raw  = shell_exec("/etc/init.d/neko status 2>/dev/null");
+$neko_status = (strpos($status_raw,"running") !== false);
 
-if ($core_mode == 'mihomo') {
-} elseif ($core_mode == 'singbox') {
-}
+// ================= CORE INFO =================
+$binary_log = ($core_mode === 'mihomo')
+    ? "$neko_dir/tmp/mihomo_log.txt"
+    : "$neko_dir/tmp/singbox_log.txt";
+
+$core_label = strtoupper($core_mode);
+$core_color = ($core_mode === 'mihomo') ? 'primary' : 'success';
+$core_icon  = ($core_mode === 'mihomo') ? 'box' : 'cpu';
+
+$show_ip  = exec("uci -q get neko.cfg.show_ip");
+$show_isp = exec("uci -q get neko.cfg.show_isp");
+
+include './header.php';
+include './navbar.php';
 ?>
-<?php 
-    include './header.php'; 
-    include './navbar.php';
-    ?>
-    <div class="container p-3">
-        <div class="card">
-            <div class="card-header d-flex align-items-center">
-                <i data-feather="home" class="feather-sm me-2"></i>
-                <h5 class="card-title mb-0">Neko Home</h5>
+
+<div class="container p-3">
+
+<!-- ================= CORE CARD ================= -->
+<div class="card mb-4">
+    <div class="card-body text-center">
+        <i data-feather="<?= $core_icon ?>" class="feather-lg text-<?= $core_color ?> mb-2"></i>
+        <div class="small text-muted">Active Core</div>
+        <h5 class="fw-bold text-<?= $core_color ?>"><?= $core_label ?></h5>
+    </div>
+</div>
+
+<!-- ================= SYSTEM INFORMATION CARD ================= -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">System Information</h5>
+    </div>
+
+    <div class="card-body p-0">
+        <div class="list-group list-group-flush">
+
+            <?php if($show_ip == '1'): ?>
+            <div class="list-group-item d-flex justify-content-between">
+                <span>IP Address</span>
+                <span id="ip-address">Loading...</span>
             </div>
-            <div class="card-body">
-            <!-- core mode -->
-            <div class="card mb-4">
+            <?php endif; ?>
 
-                <div class="card-body p-3">
-                    <div class="d-flex align-items-center justify-content-center">
-                        <?php if($core_mode == 'mihomo'): ?>
-                            <i data-feather="box" class="feather-lg text-primary me-3" style="width: 32px; height: 32px;"></i>
-                        <?php else: ?>
-                            <i data-feather="cpu" class="feather-lg text-success me-3" style="width: 32px; height: 32px;"></i>
-                        <?php endif; ?>
-                        <div class="text-center">
-                            <div class="small text-muted mb-1">Active Core</div>
-                            <h5 class="mb-0 fw-bold <?php echo ($core_mode == 'mihomo') ? 'text-primary' : 'text-success'; ?>">
-                                <?php echo strtoupper($core_mode); ?>
-                            </h5>
-                        </div>
-                    </div>
-                </div>
+            <?php if($show_isp == '1'): ?>
+            <div class="list-group-item d-flex justify-content-between">
+                <span>ISP</span>
+                <span id="isp-info">Loading...</span>
             </div>
-                <!-- System Information Card -->
-                <div class="card mb-4">
-                    <div class="card-header d-flex align-items-center">
-                        <i data-feather="server" class="feather-sm me-2"></i>
-                        <h5 class="card-title mb-0">System Information</h5>
-                    </div>
-                    <div class="card-body p-0">
-                        <div class="list-group list-group-flush">
-                            <?php
-                                $show_ip = exec("uci -q get neko.cfg.show_ip");
-                                $show_isp = exec("uci -q get neko.cfg.show_isp");
-                                
-                                if($show_ip == '1') {
-                            ?>
-                            <div class="list-group-item d-flex justify-content-between align-items-center border-bottom">
-                                <div class="d-flex align-items-center">
-                                    <i data-feather="globe" class="feather-sm me-2"></i>
-                                    <span>IP Address</span>
-                                </div>
-                                <span id="ip-address">Loading...</span>
-                            </div>
-                            <?php
-                                }
-                                if($show_isp == '1') {
-                            ?>
-                            <div class="list-group-item d-flex justify-content-between align-items-center border-bottom">
-                                <div class="d-flex align-items-center">
-                                    <i data-feather="wifi" class="feather-sm me-2"></i>
-                                    <span>ISP</span>
-                                </div>
-                                <span id="isp-info">Loading...</span>
-                            </div>
-                            <?php
-                                }
-                            ?>
-                            <div class="list-group-item d-flex justify-content-between align-items-center border-bottom">
-                                <div class="d-flex align-items-center">
-                                    <i data-feather="smartphone" class="feather-sm me-2"></i>
-                                    <span>Devices</span>
-                                </div>
-                                <span><?php echo $devices ?></span>
-                            </div>
-                            <!--
-                            <div class="list-group-item d-flex justify-content-between align-items-center border-bottom">
-                                <div class="d-flex align-items-center">
-                                    <i data-feather="cpu" class="feather-sm me-2"></i>
-                                    <span>RAM</span>
-                                </div>
-                                <span><?php echo "$ramUsage/$ramTotal MB" ?></span>
-                            </div>
-                            -->
-                            <div class="list-group-item d-flex justify-content-between align-items-center border-bottom">
-                                <div class="d-flex align-items-center">
-                                    <i data-feather="hard-drive" class="feather-sm me-2"></i>
-                                    <span>OS Version</span>
-                                </div>
-                                <span><?php echo $OSVer ?></span>
-                            </div>
-                            <div class="list-group-item d-flex justify-content-between align-items-center border-bottom">
-                                <div class="d-flex align-items-center">
-                                    <i data-feather="code" class="feather-sm me-2"></i>
-                                    <span>Kernel Version</span>
-                                </div>
-                                <span><?php echo $kernelv ?></span>
-                            </div>
-                            <div class="list-group-item d-flex justify-content-between align-items-center border-bottom">
-                                <div class="d-flex align-items-center">
-                                    <i data-feather="clock" class="feather-sm me-2"></i>
-                                    <span>Uptime</span>
-                                </div>
-                                <span><?php echo "$hours h $minutes m $seconds s"?></span>
-                            </div>
-                        </div>
-                    </div>
+            <?php endif; ?>
+
+            <div class="list-group-item d-flex justify-content-between">
+                <span>Devices</span>
+                <span><?= $devices ?></span>
+            </div>
+
+            <div class="list-group-item d-flex justify-content-between">
+                <span>OS Version</span>
+                <span><?= $OSVer ?></span>
+            </div>
+
+            <div class="list-group-item d-flex justify-content-between">
+                <span>Kernel</span>
+                <span><?= $kernelv ?></span>
+            </div>
+
+            <div class="list-group-item d-flex justify-content-between">
+                <span>Uptime</span>
+                <span><?= "$hours h $minutes m $seconds s" ?></span>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- ================= NEKO STATUS CARD ================= -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Neko</h5>
+    </div>
+
+    <div class="card-body">
+
+        <!-- STATUS -->
+        <div class="btn-group w-100 mb-3">
+            <button class="btn <?= $neko_status ? 'btn-success' : 'btn-outline-primary' ?>">
+                <?= $neko_status ? 'RUNNING' : 'DISABLED' ?>
+            </button>
+            <button class="btn btn-warning"><?= $str_cfg ?></button>
+        </div>
+
+        <!-- CONTROL -->
+        <form method="post">
+            <div class="btn-group w-100">
+                <?php
+                function btn($name,$label,$color,$disabled){
+                    $outline = $disabled ? '-outline' : '';
+                    $dis     = $disabled ? 'disabled' : '';
+                    return "<button type='submit' name='neko'
+                            value='{$name}'
+                            class='btn btn{$outline}-{$color}'
+                            {$dis}>{$label}</button>";
+                }
+
+                echo btn('start',"Enable {$core_label}",'success',$neko_status);
+                echo btn('disable',"Disable {$core_label}",'primary',!$neko_status);
+                echo btn('restart',"Restart {$core_label}",'warning',!$neko_status);
+                ?>
+            </div>
+        </form>
+
+        <!-- MODE -->
+        <div class="mt-3">
+            <input class="form-control text-center"
+                value="<?= ($core_mode==='mihomo')
+                        ? $neko_cfg['enhanced']." | ".$neko_cfg['mode']
+                        : 'SINGBOX | TUN' ?>"
+                disabled>
+        </div>
+
+    </div>
+</div>
+
+<!-- ================= LOG PANEL ================= -->
+<div class="accordion mb-4" id="logAccordion">
+    <div class="accordion-item">
+        <div class="accordion-header">
+            <button class="accordion-button collapsed"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#logsCollapse">
+                <h5 class="mb-0">Binary Log</h5>
+            </button>
+        </div>
+
+        <div id="logsCollapse"
+             class="accordion-collapse collapse"
+             data-bs-parent="#logAccordion">
+            <div class="accordion-body">
+
+                <div class="mb-2">
+                    <select id="log_filter"
+                            class="form-select"
+                            onchange="applyFilter()">
+                        <option value="ALL">Show All</option>
+                        <option value="INFO">INFO</option>
+                        <option value="WARN">WARN</option>
+                        <option value="ERROR">ERROR</option>
+                    </select>
                 </div>
 
-                <!-- Neko Status Card -->
-                <div class="card mb-4">
-                    <div class="card-header d-flex align-items-center">
-                        <i data-feather="box" class="feather-sm me-2"></i>
-                        <h5 class="card-title mb-0">Neko</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <div class="d-flex align-items-center mb-2">
-                                <i data-feather="activity" class="feather-sm me-2"></i>
-                                <span>Status</span>
-                            </div>
-                            <div class="d-grid">
-                                <div class="btn-group col" role="group">            
-                                    <?php
-                                        if($neko_status==1) echo "<button type=\"button\" class=\"btn btn-success\">RUNNING</button>\n";
-                                        else echo "<button type=\"button\" class=\"btn btn-outline-primary\">DISABLED</button>\n";
-                                        echo "<button type=\"button\" class=\"btn btn-warning\">$str_cfg</button>\n";
-                                    ?>
-                                </div>
-                            </div>
-                        </div>
+                <textarea class="form-control mb-3"
+                          id="bin_logs"
+                          rows="12"
+                          readonly></textarea>
 
-                        <div class="mb-3">
-                            <div class="d-flex align-items-center mb-2">
-                                <i data-feather="toggle-right" class="feather-sm me-2"></i>
-                                <span>Control</span>
-                            </div>
-                            <form action="index.php" method="post">
-                                <div class="d-grid">
-                                    <div class="btn-group col" role="group">
-                                        <?php
-                                            if ($core_mode == 'mihomo') {
-                                                echo '<button type="submit" name="neko" value="start" class="btn btn' . ($neko_status == 1 ? '-outline' : '') . '-success ' . ($neko_status == 1 ? 'disabled' : '') . '">
-                                                        <i data-feather="play" class="feather-sm"></i> Enable Mihomo
-                                                      </button>';
-                                                echo '<button type="submit" name="neko" value="disable" class="btn btn' . ($neko_status == 0 ? '-outline' : '') . '-primary ' . ($neko_status == 0 ? 'disabled' : '') . '">
-                                                        <i data-feather="stop-circle" class="feather-sm"></i> Disable Mihomo
-                                                      </button>';
-                                                echo '<button type="submit" name="neko" value="restart" class="btn btn' . ($neko_status == 0 ? '-outline' : '') . '-warning ' . ($neko_status == 0 ? 'disabled' : '') . '">
-                                                        <i data-feather="refresh-cw" class="feather-sm"></i> Restart Mihomo
-                                                      </button>';
-                                            } elseif ($core_mode == 'singbox') {
-                                                echo '<button type="submit" name="neko" value="start" class="btn btn' . ($neko_status == 1 ? '-outline' : '') . '-success ' . ($neko_status == 1 ? 'disabled' : '') . '">
-                                                        <i data-feather="play" class="feather-sm"></i> Enable Singbox
-                                                      </button>';
-                                                echo '<button type="submit" name="neko" value="disable" class="btn btn' . ($neko_status == 0 ? '-outline' : '') . '-primary ' . ($neko_status == 0 ? 'disabled' : '') . '">
-                                                        <i data-feather="stop-circle" class="feather-sm"></i> Disable Singbox
-                                                      </button>';
-                                                echo '<button type="submit" name="neko" value="restart" class="btn btn' . ($neko_status == 0 ? '-outline' : '') . '-warning ' . ($neko_status == 0 ? 'disabled' : '') . '">
-                                                        <i data-feather="refresh-cw" class="feather-sm"></i> Restart Singbox
-                                                      </button>';
-                                            }
-                                        ?>
-                                    </div>
-                                </div>
-                            </form>
-                        </div>
+                <button type="button"
+                        class="btn btn-primary w-100"
+                        onclick="clearLog()">
+                    Clear Log
+                </button>
 
-                        <div>
-                            <div class="d-flex align-items-center mb-2">
-                                <i data-feather="settings" class="feather-sm me-2"></i>
-                                <span>Running Mode</span>
-                            </div>
-                            <input class="form-control text-center" name="mode" type="text" placeholder="<?php 
-                                if ($core_mode == 'mihomo') {
-                                    echo $neko_cfg['enhanced']." | ".$neko_cfg['mode'];
-                                } else if ($core_mode == 'singbox') {
-                                    echo "SING-BOX | TUN";
-                                }
-                            ?>" disabled>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Logs Card -->
-                <div class="accordion mb-4">
-                    <div class="accordion-item">
-                        <div class="accordion-header" id="logsHeader">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#logsCollapse">
-                                <h5 class="mb-0">Neko Log</h5>
-                            </button>
-                        </div>
-                        <div id="logsCollapse" class="accordion-collapse collapse" data-bs-parent="#logsHeader">
-                            <div class="accordion-body">
-                                <textarea class="form-control mb-3" id="logs" rows="10" readonly></textarea>
-                                
-                                <h5 class="mb-3">Binary Log</h5>
-                                <textarea class="form-control mb-3" id="bin_logs" rows="10" readonly></textarea>
-                                
-                                <form action="index.php" method="post">
-                                    <button type="submit" name="neko" value="clear" class="btn btn-primary w-100">
-                                        Clear Log
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
+</div>
+
+</div>
+
+<!-- ================= SCRIPT ================= -->
 <script>
+let fullLogData = '';
 
 function updateLogs() {
-    const logsCollapse = document.getElementById('logsCollapse');
-    if (!logsCollapse.classList.contains('show')) return;
-
-
-    fetch('./lib/log.php?data=neko')
-        .then(response => response.text())
-        .then(data => {
-            const logs = document.getElementById('logs');
-            if (logs) {
-                logs.value = data;
-                logs.scrollTop = logs.scrollHeight;
-            }
-        });
+    const collapse = document.getElementById('logsCollapse');
+    if (!collapse.classList.contains('show')) return;
 
     fetch('./lib/log.php?data=bin')
-        .then(response => response.text())
+        .then(r => r.text())
         .then(data => {
-            const binLogs = document.getElementById('bin_logs');
-            if (binLogs) {
-                binLogs.value = data;
-                binLogs.scrollTop = binLogs.scrollHeight;
-            }
+            fullLogData = data;
+            applyFilter(false);
         });
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    initChart();
-    
-    setInterval(updateLogs, 1000);
-    
-    document.getElementById('logsCollapse').addEventListener('shown.bs.collapse', updateLogs);
-});
+function applyFilter(save = true) {
+    const filter   = document.getElementById('log_filter').value;
+    const textarea = document.getElementById('bin_logs');
 
-document.addEventListener('DOMContentLoaded', function() {
-    <?php if($show_ip == '1' || $show_isp == '1') { ?>
+    if (save)
+        localStorage.setItem("neko_log_filter", filter);
+
+    textarea.value = (filter === "ALL")
+        ? fullLogData
+        : fullLogData.split('\n')
+            .filter(l => l.toUpperCase().includes(filter))
+            .join('\n');
+
+    textarea.scrollTop = textarea.scrollHeight;
+}
+
+function clearLog() {
+    document.getElementById('bin_logs').value = '';
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+
+    const savedFilter = localStorage.getItem("neko_log_filter");
+    if (savedFilter)
+        document.getElementById("log_filter").value = savedFilter;
+
+    const savedOpen = localStorage.getItem("neko_log_open");
+    if (savedOpen === "true") {
+        new bootstrap.Collapse(
+            document.getElementById('logsCollapse'),
+            { toggle: true }
+        );
+    }
+
+    const logsCollapse = document.getElementById('logsCollapse');
+
+    logsCollapse.addEventListener('shown.bs.collapse', () => {
+        localStorage.setItem("neko_log_open","true");
+        updateLogs();
+    });
+
+    logsCollapse.addEventListener('hidden.bs.collapse', () => {
+        localStorage.setItem("neko_log_open","false");
+    });
+
+    setInterval(updateLogs,5000);
+
+    <?php if($show_ip=='1' || $show_isp=='1'): ?>
     fetch('http://ip-api.com/json/')
-        .then(response => response.json())
-        .then(data => {
-            <?php if($show_ip == '1') { ?>
+        .then(r=>r.json())
+        .then(data=>{
+            <?php if($show_ip=='1'): ?>
             document.getElementById('ip-address').textContent = data.query;
-            <?php } ?>
-            <?php if($show_isp == '1') { ?>
+            <?php endif; ?>
+            <?php if($show_isp=='1'): ?>
             document.getElementById('isp-info').textContent = data.isp;
-            <?php } ?>
+            <?php endif; ?>
         })
-        .catch(error => {
-            <?php if($show_ip == '1') { ?>
-            document.getElementById('ip-address').textContent = 'Failed to load';
-            <?php } ?>
-            <?php if($show_isp == '1') { ?>
-            document.getElementById('isp-info').textContent = 'Failed to load';
-            <?php } ?>
+        .catch(()=>{
+            <?php if($show_ip=='1'): ?>
+            document.getElementById('ip-address').textContent = 'Failed';
+            <?php endif; ?>
+            <?php if($show_isp=='1'): ?>
+            document.getElementById('isp-info').textContent = 'Failed';
+            <?php endif; ?>
         });
-    <?php } ?>
+    <?php endif; ?>
 });
 </script>
+
 <?php include './footer.php'; ?>
