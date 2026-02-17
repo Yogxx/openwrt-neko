@@ -1,47 +1,46 @@
 <?php
 include '../cfg.php';
-$neko_log_path="$neko_dir/tmp/log.txt";
-$core_mode = exec("uci -q get neko.cfg.core_mode");
 
-if ($core_mode === 'mihomo') {
-    $binary_log_path = "$neko_dir/tmp/neko_log.txt";
-    $core_bin = $neko_bin;
-} elseif ($core_mode === 'singbox') {
-    $binary_log_path = "$neko_dir/tmp/singbox_log.txt";
-    $core_bin = "/usr/bin/sing-box";
-}
-
-$host_now=$_SERVER['SERVER_NAME'];
+$core_mode = trim(shell_exec("uci -q get neko.cfg.core_mode"));
+$host_now = $_SERVER['SERVER_NAME'];
 
 if(isset($_GET['data'])){
     $dt = $_GET['data'];
+
     if ($dt == 'neko') {
-        echo shell_exec("cat $neko_log_path");
+        echo shell_exec("logread | grep neko | tail -n 100");
     }
+
     else if($dt == 'bin') {
         if ($core_mode === 'mihomo') {
-            echo shell_exec("cat $binary_log_path | awk -F'[\"T.= ]' '{print \"[ \" $4 \" ] \" toupper($8) \" :\", substr($0,index($0,$11))}' | sed 's/.$//'");
+            echo shell_exec("logread | grep mihomo | tail -n 100");
         } elseif ($core_mode === 'singbox') {
-            echo shell_exec("cat $binary_log_path");
+            echo shell_exec("logread | grep sing-box | tail -n 100");
         }
     }
+
     else if($dt == 'neko_ver') {
-        echo exec("$neko_dir/core/neko -v");
+        echo trim(shell_exec("/etc/init.d/neko status >/dev/null 2>&1 && echo 'Service Active' || echo 'Service Stopped'"));
     }
+
     else if($dt == 'mihomo_ver') {
-        echo exec("/usr/bin/mihomo -v | head -1 | awk '{print $5 \" \" $3}'");
+        echo trim(shell_exec("/usr/bin/mihomo -v 2>/dev/null | head -1"));
     }
+
     else if($dt == 'singbox_ver') {
-        echo exec("/usr/bin/sing-box version | grep 'sing-box version' | awk '{print $3}'");
+        echo trim(shell_exec("/usr/bin/sing-box version 2>/dev/null | head -1"));
     }
+
     else if($dt == 'url_dash'){
         header("Content-type: application/json; charset=utf-8");
-        $yacd = exec (" curl -m 5 -f -s $host_now/nekoclash/dashboard.php | grep 'href=\"h' | cut -d '\"' -f6 | head -1");
-        $zashboard = exec (" curl -m 5 -f -s $host_now/nekoclash/dashboard.php | grep 'href=\"h' | cut -d '\"' -f6 | tail -1");
-        echo "{\n";
-        echo "  \"yacd\":\"$yacd\",\n";
-        echo "  \"zashboard\":\"$zashboard\"\n";
-        echo "}";
+
+        $yacd = trim(shell_exec("curl -m 5 -f -s http://$host_now/nekoclash/dashboard.php | grep 'href=\"h' | cut -d '\"' -f6 | head -1"));
+        $zashboard = trim(shell_exec("curl -m 5 -f -s http://$host_now/nekoclash/dashboard.php | grep 'href=\"h' | cut -d '\"' -f6 | tail -1"));
+
+        echo json_encode([
+            "yacd" => $yacd,
+            "zashboard" => $zashboard
+        ]);
     }
 }
 ?>
