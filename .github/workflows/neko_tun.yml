@@ -62,7 +62,6 @@ jobs:
       - name: Update Feeds
         run: |
           cd openwrt
-          # rm -rf feeds/packages feeds/luci feeds/base
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
