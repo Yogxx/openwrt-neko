@@ -83,7 +83,7 @@ jobs:
       - name: Build luci-app-neko
         run: |
           cd openwrt
-          make package/luci-app-neko/compile V=s -j$(nproc)
+          make package/luci-app-neko/compile V=sc -j1
 
       - name: Extract Version from Makefile
         id: version
