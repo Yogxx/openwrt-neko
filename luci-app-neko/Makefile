@@ -1,21 +1,17 @@
 include $(TOPDIR)/rules.mk
 
+LUCI_TITLE:=LuCI support for Mihomo
+LUCI_DEPENDS:=+luci-base +kmod-tun
+LUCI_PKGARCH:=all
+
 PKG_NAME:=luci-app-neko
 PKG_VERSION:=1.3.0
 PKG_RELEASE:=4
 
-include $(INCLUDE_DIR)/package.mk
-
-define Package/$(PKG_NAME)
-	CATEGORY:=LuCI
-	SUBMENU:=3. Applications
-	TITLE:=LuCI support for Mihomo
-	PKGARCH:=all
-	DEPENDS:=+luci-base +kmod-tun
-endef
+include $(INCLUDE_DIR)/luci.mk
 
 define Package/$(PKG_NAME)/description
-LuCI support for Mihomo core.
+ LuCI support for Mihomo core.
 endef
 
 define Package/$(PKG_NAME)/install
