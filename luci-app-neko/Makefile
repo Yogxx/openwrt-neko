@@ -20,9 +20,15 @@ endef
 
 define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)
-	$(CP) ./root/* $(1)/ || true
-	$(INSTALL_DIR) $(1)/www
-	$(CP) ./www/* $(1)/www/ || true
+
+	if [ -d ./root ]; then \
+		$(CP) ./root/* $(1)/; \
+	fi
+
+	if [ -d ./www ]; then \
+		$(INSTALL_DIR) $(1)/www; \
+		$(CP) ./www/* $(1)/www/; \
+	fi
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME)))
