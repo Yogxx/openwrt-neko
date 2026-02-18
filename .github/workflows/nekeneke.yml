@@ -47,10 +47,10 @@ jobs:
               echo ""
               mkdir feeds artifacts
               cp -rf ./luci-app-neko ./feeds
-              cp -rf ./mihomo ./feeds
+              # cp -rf ./mihomo ./feeds
         
       - name: Building luci-app-neko
-        uses: nosignals/gh-action-sdk@main
+        uses: bobbyunknown/gh-action-sdk@main
         env:
           ARCH: ${{ matrix.arch }}-${{ matrix.release }}
           ARTIFACTS_DIR: ${{ github.workspace }}/artifacts
