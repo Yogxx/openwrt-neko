@@ -13,13 +13,14 @@ on:
         required: true
         default: ''
         type: string
-        
-jobs: 
+
+jobs:
   build_ipk:
-    permissions:
-      contents: write
     name: Build Neko
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
     strategy:
       fail-fast: false
       matrix:
@@ -28,27 +29,42 @@ jobs:
         arch:
           - x86_64
           - aarch64_generic
-          
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
           ref: main
 
+      # ==============================
+      # Prepare required directories
+      # ==============================
+      - name: Create required directories
+        run: |
+          mkdir -p ${{ github.workspace }}/artifacts
+          mkdir -p ${{ github.workspace }}/feeds/action
+
+      # ==============================
+      # Prepare theme
+      # ==============================
       - name: Preparing Theme
         run: |
-              echo ""
-              git clone -b neko-theme https://github.com/nosignals/neko
-              cp ./neko/theme/* ./luci-app-neko/www/nekoclash/assets/theme/
-              cp ./neko/img/* ./luci-app-neko/www/nekoclash/assets/img/
-        
+          git clone -b neko-theme https://github.com/nosignals/neko
+          mkdir -p ./luci-app-neko/www/nekoclash/assets/theme
+          mkdir -p ./luci-app-neko/www/nekoclash/assets/img
+          cp -r ./neko/theme/* ./luci-app-neko/www/nekoclash/assets/theme/
+          cp -r ./neko/img/* ./luci-app-neko/www/nekoclash/assets/img/
+
+      # ==============================
+      # Copy package into feed
+      # ==============================
       - name: Preparing Neko
         run: |
-              echo ""
-              mkdir -p feeds/action
-              cp -rf ./luci-app-neko ./feeds/action/
-              # cp -rf ./mihomo ./feeds
-        
+          cp -r ./luci-app-neko ./feeds/action/
+
+      # ==============================
+      # Build using OpenWrt SDK
+      # ==============================
       - name: Building luci-app-neko
         uses: bobbyunknown/gh-action-sdk@main
         env:
@@ -57,49 +73,51 @@ jobs:
           FEED_DIR: ${{ github.workspace }}/feeds
           PACKAGES: luci-app-neko
           NO_SHFMT_CHECK: 1
-        
-      - name: Delivering Package
+          V: s
+
+      # ==============================
+      # Upload build artifact
+      # ==============================
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: neko-${{ matrix.release }}_${{ matrix.arch }}
-          path: ${{ github.workspace }}/artifacts/bin/packages/${{ matrix.arch }}/action/luci-app*
+          path: ${{ github.workspace }}/artifacts/bin/packages/${{ matrix.arch }}/action/luci-app*.ipk
 
   push_packages:
-    needs: build_ipk
     name: Push Packages to Release
-    permissions:
-      contents: write  # To push a branch
+    needs: build_ipk
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
     steps:
-      - name: Download temporary artifact
+      - name: Download Artifacts
         uses: actions/download-artifact@v4
-        
-      - name: Moving artifact to releases
-        shell: bash
+
+      - name: Collect Packages
         run: |
-          mkdir -p ./release
-          find . -type f -name "luci-app*.ipk" -exec cp {} ./release/ \;
-          ls -lh ./release
-        
-      - name: Upload release asset
+          mkdir -p release
+          find . -type f -name "luci-app*.ipk" -exec cp {} release/ \;
+          ls -lh release
+
+      - name: Upload Release Asset
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ./release/*
+          file: release/*
+          file_glob: true
           overwrite: true
           prerelease: true
           tag: neko-dev
-          file_glob: true
           body: |
             # LUCI APP NEKO DEV
             Simple Clash TUN based Proxy
+
             ### Information
-            - Changelog : 
-              - dev build, not recomended to install
-              - ${{ inputs.changelog }}
-            - Default Config : 
-              - config.yaml : minimal Configs for Neko (only 3 rules) - Secret : ` one `
+            - Dev build (not recommended for production)
+            - ${{ inputs.changelog }}
+
             ### Dependency Requirement
-            - ` bash, kmod-tun, php, php-cgi ` (install PHP Manually before install Neko)
-            - Openwrt 24: ` php8 php8-cgi nftables mihomo` 
-            
+            - bash, kmod-tun, php, php-cgi
+            - OpenWrt 24: php8 php8-cgi nftables mihomo
