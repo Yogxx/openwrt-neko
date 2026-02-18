@@ -30,7 +30,7 @@ jobs:
             libssl-dev python3-distutils rsync unzip zlib1g-dev \
             file wget curl zstd
 
-      # 🔥 Cache SDK
+      # ✅ Cache SDK archive
       - name: Cache SDK
         uses: actions/cache@v4
         with:
@@ -40,10 +40,7 @@ jobs:
       - name: Download SDK if not cached
         run: |
           if [ ! -f "${SDK_FILE}" ]; then
-            echo "Downloading SDK..."
             wget "${SDK_URL}"
-          else
-            echo "Using cached SDK"
           fi
 
       - name: Extract SDK
@@ -52,17 +49,18 @@ jobs:
           SDK_DIR=$(tar -tf ${SDK_FILE} | head -n1 | cut -d/ -f1)
           mv "$SDK_DIR" openwrt
 
-      # 🔥 Cache dl folder (BIG speed boost)
+      # ✅ Cache dl folder
       - name: Cache dl directory
         uses: actions/cache@v4
         with:
           path: openwrt/dl
           key: dl-25.12.0-rc4-x86-64
 
-      # Minimal feeds only
-      - name: Install feeds
+      # 🔥 FIX UTAMA DI SINI
+      - name: Update & Install feeds
         run: |
           cd openwrt
+          ./scripts/feeds update -a
           ./scripts/feeds install -a
 
       - name: Copy luci-app-neko
@@ -74,10 +72,11 @@ jobs:
           cd openwrt
           make defconfig
 
+      # 🔥 Tambah V=s untuk debug jelas
       - name: Build luci-app-neko
         run: |
           cd openwrt
-          make package/luci-app-neko/{clean,compile} -j$(nproc)
+          make package/luci-app-neko/{clean,compile} -j$(nproc) V=s
 
       - name: Collect APK
         run: |
