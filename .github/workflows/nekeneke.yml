@@ -26,14 +26,14 @@ jobs:
             libssl-dev python3-distutils rsync unzip zlib1g-dev \
             file wget curl zstd
 
-      # ===== DOWNLOAD SDK =====
+      # ===== DOWNLOAD SDK (AUTO DETECT SNAPSHOT) =====
       - name: Download OpenWrt Snapshot SDK
         run: |
-          SDK_URL=$(wget -qO- https://downloads.openwrt.org/snapshots/targets/x86/64/ \
+          SDK_FILE=$(wget -qO- https://downloads.openwrt.org/snapshots/targets/x86/64/ \
             | grep -o 'openwrt-sdk-x86-64[^"]*\.tar\.zst' | head -n1)
 
-          wget https://downloads.openwrt.org/snapshots/targets/x86/64/$SDK_URL
-          echo "SDK file: $SDK_URL"
+          wget https://downloads.openwrt.org/snapshots/targets/x86/64/$SDK_FILE
+          echo "Downloaded: $SDK_FILE"
           ls -lh *.tar.zst
 
       # ===== SAFE EXTRACT =====
@@ -45,16 +45,11 @@ jobs:
           mv "$DIR" openwrt
           df -h
 
-      # ===== ADD LUCI FEED PROPERLY =====
-      - name: Configure feeds
+      # ===== USE DEFAULT FEEDS (NO DUPLICATE LUCI) =====
+      - name: Setup feeds
         run: |
           cd openwrt
           cp feeds.conf.default feeds.conf
-          echo "src-git luci https://git.openwrt.org/project/luci.git" >> feeds.conf
-
-      - name: Update feeds
-        run: |
-          cd openwrt
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
@@ -70,7 +65,7 @@ jobs:
           echo "CONFIG_PACKAGE_luci-app-neko=m" >> .config
           make defconfig
 
-      # ===== BUILD =====
+      # ===== BUILD (VERBOSE) =====
       - name: Build luci-app-neko
         run: |
           cd openwrt
