@@ -26,17 +26,20 @@ jobs:
             libssl-dev python3-distutils rsync unzip zlib1g-dev \
             file wget curl zstd
 
-      # 🔥 Download snapshot SDK langsung (tanpa scraping)
+      # 🔥 Download snapshot SDK
       - name: Download OpenWrt Snapshot SDK
         run: |
           SDK_URL="https://downloads.openwrt.org/snapshots/targets/x86/64/openwrt-sdk-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst"
           wget -q --show-progress $SDK_URL
           ls -lh *.tar.zst
 
+      # ✅ FIXED EXTRACT (no wildcard bug)
       - name: Extract SDK
         run: |
-          tar --use-compress-program=unzstd -xf openwrt-sdk-*.tar.zst
-          mv openwrt-sdk-* openwrt
+          FILE=$(ls openwrt-sdk-*.tar.zst)
+          tar --use-compress-program=unzstd -xf "$FILE"
+          DIR=$(tar -tf "$FILE" | head -n1 | cut -d/ -f1)
+          mv "$DIR" openwrt
           df -h
 
       - name: Update feeds
@@ -45,13 +48,13 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-      # 🔥 FIX luci.mk not found
+      # 🔥 Fix luci.mk not found
       - name: Link luci.mk
         run: |
           cd openwrt
           ln -sf feeds/luci/luci.mk include/luci.mk
 
-      - name: Copy luci-app-neko into package folder
+      - name: Copy luci-app-neko
         run: |
           cp -r luci-app-neko openwrt/package/
 
@@ -61,7 +64,7 @@ jobs:
           echo "CONFIG_PACKAGE_luci-app-neko=m" >> .config
           make defconfig
 
-      # 🔎 Build verbose supaya error jelas
+      # 🔎 Verbose build
       - name: Build luci-app-neko
         run: |
           cd openwrt
