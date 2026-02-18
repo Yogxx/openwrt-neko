@@ -29,7 +29,7 @@ jobs:
             sdk_url: "https://downloads.openwrt.org/releases/24.10.5/targets/x86/64/openwrt-sdk-24.10.5-x86-64_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
             pkg_ext: "ipk"
           - name: snapshot
-            sdk_url: "https://downloads.openwrt.org/snapshots/targets/x86/64/openwrt-sdk-x86-64_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
+            sdk_url: "https://downloads.openwrt.org/snapshots/targets/x86/64/openwrt-sdk-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst"
             pkg_ext: "apk"
 
     steps:
@@ -48,18 +48,13 @@ jobs:
           echo "Downloading OpenWrt SDK from $SDK_URL"
           wget -O sdk.tar.zst "$SDK_URL"
 
-          # Pastikan file berhasil didownload
           if [ ! -s sdk.tar.zst ]; then
             echo "SDK download failed or file empty!"
             exit 1
           fi
 
-          # Buat folder openwrt
           mkdir -p openwrt
-
-          # Extract menggunakan zstd + tar
           zstd -d sdk.tar.zst -c | tar -x -C openwrt --strip-components=1
-
           echo "Contents of openwrt directory:"
           ls -lh openwrt
 
