@@ -8,8 +8,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Install Dependencies
         run: |
@@ -19,13 +18,13 @@ jobs:
           libssl-dev python3-distutils rsync unzip zlib1g-dev \
           file wget
 
-      - name: Clone OpenWrt Full Source
+      - name: Clone OpenWrt
         run: |
           git clone https://github.com/openwrt/openwrt.git
           cd openwrt
           git checkout openwrt-23.05
 
-      - name: Update & Install Feeds
+      - name: Update Feeds
         run: |
           cd openwrt
           ./scripts/feeds update -a
@@ -33,16 +32,13 @@ jobs:
 
       - name: Copy luci-app-neko
         run: |
-          cp -r package/luci-app-neko openwrt/package/
+          mkdir -p openwrt/package/
+          cp -r luci-app-neko openwrt/package/
 
-      - name: Configure Build
+      - name: Build
         run: |
           cd openwrt
           make defconfig
-
-      - name: Build luci-app-neko
-        run: |
-          cd openwrt
           make package/luci-app-neko/compile V=s
 
       - name: Upload IPK
