@@ -21,13 +21,13 @@ endef
 define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)
 
-	if [ -d ./root ]; then \
-		$(CP) ./root/* $(1)/; \
+	if [ -d $(CURDIR)/root ]; then \
+		$(CP) $(CURDIR)/root/* $(1)/; \
 	fi
 
-	if [ -d ./www ]; then \
+	if [ -d $(CURDIR)/www ]; then \
 		$(INSTALL_DIR) $(1)/www; \
-		$(CP) ./www/* $(1)/www/; \
+		$(CP) $(CURDIR)/www/* $(1)/www/; \
 	fi
 endef
 
