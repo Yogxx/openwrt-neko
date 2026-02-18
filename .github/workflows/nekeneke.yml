@@ -1,3 +1,4 @@
+# workflow-final.yml
 name: Build luci-app-nekonedtt
 
 permissions:
@@ -51,8 +52,8 @@ jobs:
         run: |
           set -e
           SDK_URL="${{ matrix.variant.sdk_url }}"
-
           echo "Downloading SDK: $SDK_URL"
+
           if [[ "$SDK_URL" == *.tar.zst ]]; then
             wget -O sdk.tar.zst "$SDK_URL" --tries=5 --timeout=30
             mkdir openwrt
@@ -75,17 +76,18 @@ jobs:
           ./scripts/feeds install luci-base
 
       - name: Copy luci-app-neko
-        run: cp -r luci-app-neko openwrt/package/
+        run: |
+          if [ ! -d openwrt-neko/luci-app-neko ]; then
+            echo "Folder luci-app-neko tidak ditemukan!"
+            exit 1
+          fi
+          cp -r openwrt-neko/luci-app-neko openwrt/package/
 
       - name: Configure SDK
-        run: |
-          cd openwrt
-          make defconfig
+        run: cd openwrt && make defconfig
 
       - name: Build luci-app-neko
-        run: |
-          cd openwrt
-          make package/luci-app-neko/compile V=s -j$(nproc)
+        run: cd openwrt && make package/luci-app-neko/compile V=s -j$(nproc)
 
       - name: Extract Version
         id: version
