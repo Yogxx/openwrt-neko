@@ -45,8 +45,8 @@ jobs:
       - name: Preparing Neko
         run: |
               echo ""
-              mkdir feeds artifacts
-              cp -rf ./luci-app-neko ./feeds
+              mkdir -p feeds/action
+              cp -rf ./luci-app-neko ./feeds/action/
               # cp -rf ./mihomo ./feeds
         
       - name: Building luci-app-neko
