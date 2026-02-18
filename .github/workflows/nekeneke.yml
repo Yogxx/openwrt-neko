@@ -1,10 +1,10 @@
-name: Build luci-app-neko 25
+name: Build luci-app-neko (OpenWrt Snapshot SDK)
 
 on:
   workflow_dispatch:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 permissions:
   contents: write
@@ -26,33 +26,18 @@ jobs:
             libssl-dev python3-distutils rsync unzip zlib1g-dev \
             file wget curl zstd
 
-      # Get latest Snapshot SDK
-      - name: Get SDK filename
-        id: sdk
+      # 🔥 Download snapshot SDK langsung (tanpa scraping)
+      - name: Download OpenWrt Snapshot SDK
         run: |
-          BASE_URL="https://downloads.openwrt.org/snapshots/targets/x86/64"
-          SDK_FILE=$(curl -s $BASE_URL/ | grep -oE 'openwrt-sdk-[^"]*x86-64[^"]*\.tar\.zst' | head -n1)
-          echo "sdk_file=$SDK_FILE" >> $GITHUB_OUTPUT
-
-      - name: Cache SDK
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.sdk.outputs.sdk_file }}
-          key: sdk-${{ steps.sdk.outputs.sdk_file }}
-
-      - name: Download SDK if needed
-        run: |
-          BASE_URL="https://downloads.openwrt.org/snapshots/targets/x86/64"
-          SDK_FILE="${{ steps.sdk.outputs.sdk_file }}"
-          if [ ! -f "$SDK_FILE" ]; then
-            wget "$BASE_URL/$SDK_FILE"
-          fi
+          SDK_URL="https://downloads.openwrt.org/snapshots/targets/x86/64/openwrt-sdk-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst"
+          wget -q --show-progress $SDK_URL
+          ls -lh *.tar.zst
 
       - name: Extract SDK
         run: |
-          tar --use-compress-program=unzstd -xf ${{ steps.sdk.outputs.sdk_file }}
-          SDK_DIR=$(tar -tf ${{ steps.sdk.outputs.sdk_file }} | head -n1 | cut -d/ -f1)
-          mv "$SDK_DIR" openwrt
+          tar --use-compress-program=unzstd -xf openwrt-sdk-*.tar.zst
+          mv openwrt-sdk-* openwrt
+          df -h
 
       - name: Update feeds
         run: |
@@ -60,18 +45,23 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-      - name: Copy luci-app-neko
+      # 🔥 FIX luci.mk not found
+      - name: Link luci.mk
+        run: |
+          cd openwrt
+          ln -sf feeds/luci/luci.mk include/luci.mk
+
+      - name: Copy luci-app-neko into package folder
         run: |
           cp -r luci-app-neko openwrt/package/
 
-      # 🔥 ENABLE PACKAGE
       - name: Enable luci-app-neko
         run: |
           cd openwrt
           echo "CONFIG_PACKAGE_luci-app-neko=m" >> .config
           make defconfig
 
-      # 🔎 BUILD WITH VERBOSE
+      # 🔎 Build verbose supaya error jelas
       - name: Build luci-app-neko
         run: |
           cd openwrt
