@@ -1,7 +1,4 @@
-#
-# Copyright (C) 2024 nosignals
-#
-name: Building Neko DEV
+name: Building Neko DEVx
 
 on:
   workflow_dispatch:
