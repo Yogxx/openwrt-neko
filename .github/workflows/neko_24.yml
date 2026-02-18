@@ -28,46 +28,54 @@ jobs:
           wget -O sdk.tar.zst "$SDK_URL"
 
           if [ ! -s sdk.tar.zst ]; then
-            echo "SDK download failed or file empty!"
+            echo "SDK download failed!"
             exit 1
           fi
 
           mkdir -p openwrt
           zstd -d sdk.tar.zst -c | tar -x -C openwrt --strip-components=1
-          echo "Contents of openwrt directory:"
-          ls -lh openwrt
 
-      - name: Update Feeds
+      # ✅ Update & Install Feeds (FIXED)
+      - name: Update & Install Feeds
         run: |
           cd openwrt
+          ./scripts/feeds update -a
           ./scripts/feeds install -a
 
+      # ✅ Copy package
       - name: Copy luci-app-neko into SDK
         run: |
           cp -r $GITHUB_WORKSPACE/luci-app-neko openwrt/package/
+          ls -R openwrt/package/luci-app-neko
 
+      # ✅ Enable package (FIXED)
       - name: Configure SDK
         run: |
           cd openwrt
+          echo "CONFIG_PACKAGE_luci-app-neko=m" >> .config
           make defconfig
 
+      # ✅ Build
       - name: Build luci-app-neko
         run: |
           cd openwrt
-          make package/luci-app-neko/compile -j$(nproc) V=s
+          make package/luci-app-neko/compile V=s -j$(nproc)
 
+      # Collect IPK
       - name: Collect luci-app-neko IPK
         run: |
           mkdir -p release
           PKG_FILE=$(find openwrt/bin/packages -type f -name "luci-app-neko*.ipk" | head -n1)
+
           if [ -z "$PKG_FILE" ]; then
             echo "Package not found!"
             exit 1
           fi
+
           cp "$PKG_FILE" release/
-          echo "Package collected:"
           ls -lah release
 
+      # Upload release
       - name: Upload & Overwrite Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
