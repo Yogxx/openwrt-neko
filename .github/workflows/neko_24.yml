@@ -39,6 +39,11 @@ jobs:
       - name: Update & Install Feeds
         run: |
           cd openwrt
+          git config --global http.postBuffer 1048576000
+          git config --global http.maxRequests 5
+          git config --global http.lowSpeedLimit 0
+          git config --global http.lowSpeedTime 999999
+          
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
