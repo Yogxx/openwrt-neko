@@ -19,7 +19,7 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v4
 
-    # ================= EXTRACT VERSION FROM MAKEFILE =================
+    # ================= EXTRACT VERSION =================
     - name: Extract version
       id: get_version
       run: |
@@ -29,10 +29,9 @@ jobs:
 
         echo "FULL_VERSION=$FULL_VERSION" >> $GITHUB_ENV
         echo "version=$FULL_VERSION" >> $GITHUB_OUTPUT
-
         echo "Detected version: $FULL_VERSION"
 
-    # ================= INSTALL BUILD DEPENDENCIES =================
+    # ================= INSTALL DEPENDENCIES =================
     - name: Install Dependencies
       run: |
         sudo apt update
@@ -41,7 +40,7 @@ jobs:
           libssl-dev python3-distutils rsync unzip zlib1g-dev \
           file wget curl xz-utils
 
-    # ================= DOWNLOAD FIXED SNAPSHOT SDK =================
+    # ================= DOWNLOAD SDK =================
     - name: Download OpenWrt Snapshot SDK (x86_64)
       run: |
         SDK_FILE="openwrt-sdk-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst"
@@ -51,30 +50,41 @@ jobs:
         wget "$BASE_URL/$SDK_FILE"
 
         tar --use-compress-program=unzstd -xvf "$SDK_FILE"
+
         rm -rf sdk
         EXTRACTED_DIR=$(tar -tf "$SDK_FILE" | head -n1 | cut -f1 -d"/")
         mv "$EXTRACTED_DIR" sdk
 
-    # ================= PREPARE SDK =================
-    - name: Prepare SDK
+    # ================= PREPARE SDK (ULTRA STABLE) =================
+    - name: Prepare SDK (Stable Feeds Mode)
       run: |
         cd sdk
+
+        # Fix common RPC errors in CI
+        git config --global http.postBuffer 524288000
+        git config --global http.maxRequests 10
+        git config --global core.compression 0
+        git config --global http.version HTTP/1.1
+
+        # Make feeds shallow (faster & lighter)
+        sed -i 's/^src-git/src-git --depth 1/' feeds.conf.default
+
         ./scripts/feeds update -a
         ./scripts/feeds install -a
         make defconfig
 
-    # ================= COPY luci-app-neko =================
+    # ================= COPY PACKAGE =================
     - name: Copy luci-app-neko to SDK
       run: |
         cp -r luci-app-neko sdk/package/
 
-    # ================= COMPILE PACKAGE =================
+    # ================= BUILD PACKAGE =================
     - name: Compile luci-app-neko
       run: |
         cd sdk
         make package/luci-app-neko/compile V=s -j$(nproc)
 
-    # ================= PREPARE RELEASE FILE =================
+    # ================= PREPARE RELEASE =================
     - name: Prepare release file
       run: |
         mkdir -p release
@@ -88,14 +98,14 @@ jobs:
         cp "$FILE" release/luci-app-neko_${FULL_VERSION}.apk
         ls -lh release
 
-    # ================= UPLOAD ARTIFACT (MANUAL RUN) =================
+    # ================= UPLOAD ARTIFACT =================
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: luci-app-neko_${{ steps.get_version.outputs.version }}
         path: release/luci-app-neko_${{ steps.get_version.outputs.version }}.apk
 
-    # ================= PUBLISH GITHUB RELEASE (TAG ONLY) =================
+    # ================= RELEASE =================
     - name: Publish to GitHub Release
       if: startsWith(github.ref, 'refs/tags/')
       uses: softprops/action-gh-release@v2
