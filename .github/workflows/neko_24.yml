@@ -15,6 +15,7 @@ jobs:
     timeout-minutes: 90
 
     steps:
+
     # ================= CHECKOUT =================
     - name: Checkout Repository
       uses: actions/checkout@v4
@@ -40,35 +41,43 @@ jobs:
           libssl-dev python3-distutils rsync unzip zlib1g-dev \
           file wget curl xz-utils
 
-    # ================= DOWNLOAD OPENWRT 24.10 SDK =================
-    - name: Download OpenWrt 24.10.5 SDK (x86_64)
+    # ================= DOWNLOAD OPENWRT 24.10.5 SDK =================
+    - name: Download SDK
       run: |
         SDK_URL="https://downloads.openwrt.org/releases/24.10.5/targets/x86/64/openwrt-sdk-24.10.5-x86-64_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
 
-        echo "Downloading SDK..."
-        wget $SDK_URL -O sdk.tar.zst
+        echo "Downloading OpenWrt 24.10.5 SDK..."
+        wget -q --show-progress $SDK_URL -O sdk.tar.zst
 
         tar --use-compress-program=unzstd -xvf sdk.tar.zst
-
         EXTRACTED_DIR=$(tar -tf sdk.tar.zst | head -n1 | cut -f1 -d"/")
         mv "$EXTRACTED_DIR" sdk
 
-    # ================= PREPARE SDK =================
-    - name: Prepare SDK
+    # ================= PREPARE SDK (ANTI RPC MODE) =================
+    - name: Prepare SDK (Ultra Stable)
       run: |
         cd sdk
 
+        # Strong Git stability config
         git config --global http.postBuffer 524288000
-        git config --global http.maxRequests 10
+        git config --global http.maxRequests 20
         git config --global core.compression 0
         git config --global http.version HTTP/1.1
 
-        ./scripts/feeds update -a
+        export GIT_OPTIONAL_LOCKS=0
+
+        # Retry feeds update up to 3 times
+        for i in 1 2 3; do
+          echo "Feeds update attempt $i..."
+          ./scripts/feeds update -a -f && break
+          sleep 5
+        done
+
         ./scripts/feeds install -a
         make defconfig
 
     # ================= COPY PACKAGE =================
-    - name: Copy luci-app-neko to SDK
+    - name: Copy luci-app-neko into SDK
       run: |
         cp -r luci-app-neko sdk/package/
 
@@ -99,7 +108,7 @@ jobs:
         name: luci-app-neko_${{ steps.get_version.outputs.version }}_ipk
         path: luci-app-neko_${{ steps.get_version.outputs.version }}.ipk
 
-    # ================= RELEASE =================
+    # ================= PUBLISH RELEASE =================
     - name: Publish to GitHub Release
       if: startsWith(github.ref, 'refs/tags/')
       uses: softprops/action-gh-release@v2
