@@ -1,0 +1,94 @@
+name: Build OpenWrt 25.x Full World (APK)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+
+    steps:
+      # ================= CHECKOUT =================
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # ================= INSTALL DEPENDENCIES =================
+      - name: Install Dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential clang flex bison g++ gawk \
+            gcc-multilib g++-multilib gettext git libncurses-dev \
+            libssl-dev python3 python3-distutils rsync unzip zlib1g-dev \
+            file wget curl cmake ninja-build ccache
+
+      # ================= GIT STABILITY FIX =================
+      - name: Improve Git Stability
+        run: |
+          git config --global http.postBuffer 524288000
+          git config --global http.maxRequests 10
+          git config --global core.compression 0
+
+      # ================= CLONE OPENWRT 25.x =================
+      - name: Clone OpenWrt (main → 25.x)
+        run: |
+          git clone --depth 1 https://github.com/openwrt/openwrt.git
+          cd openwrt
+          git checkout main
+
+      # ================= PATCH FEEDS (ANTI RPC ERROR) =================
+      - name: Patch feeds to GitHub mirrors
+        run: |
+          cd openwrt
+          sed -i 's|https://git.openwrt.org/feed/packages.git|https://github.com/openwrt/packages.git|' feeds.conf.default
+          sed -i 's|https://git.openwrt.org/project/luci.git|https://github.com/openwrt/luci.git|' feeds.conf.default
+          sed -i 's|https://git.openwrt.org/feed/routing.git|https://github.com/openwrt/routing.git|' feeds.conf.default
+          sed -i 's|https://git.openwrt.org/feed/telephony.git|https://github.com/openwrt/telephony.git|' feeds.conf.default
+
+      # ================= UPDATE FEEDS =================
+      - name: Update & Install Feeds
+        run: |
+          cd openwrt
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      # ================= COPY CUSTOM PACKAGE =================
+      - name: Copy luci-app-neko into OpenWrt
+        run: |
+          mkdir -p openwrt/package/
+          cp -r luci-app-neko openwrt/package/
+
+      # ================= CONFIGURE TARGET =================
+      - name: Configure Build (x86_64 + APK mode)
+        run: |
+          cd openwrt
+          
+          cat <<EOF >> .config
+          CONFIG_TARGET_x86=y
+          CONFIG_TARGET_x86_64=y
+          CONFIG_TARGET_x86_64_Generic=y
+          CONFIG_PACKAGE_luci-app-neko=y
+          CONFIG_USE_APK=y
+          EOF
+
+          make defconfig
+
+      # ================= FULL WORLD BUILD =================
+      - name: Build Full World (Required for 25.x APK stability)
+        run: |
+          cd openwrt
+          make -j1 V=s
+
+      # ================= UPLOAD APK PACKAGES =================
+      - name: Upload Generated APK Files
+        uses: actions/upload-artifact@v4
+        with:
+          name: openwrt-25x-apk-packages
+          path: openwrt/bin/packages/**/*.apk
+
+      # ================= UPLOAD FIRMWARE =================
+      - name: Upload Firmware Images
+        uses: actions/upload-artifact@v4
+        with:
+          name: openwrt-25x-firmware
+          path: openwrt/bin/targets/**/*
