@@ -51,7 +51,9 @@ jobs:
         wget "$BASE_URL/$SDK_FILE"
 
         tar --use-compress-program=unzstd -xvf "$SDK_FILE"
-        mv openwrt-sdk-* sdk
+        rm -rf sdk
+        EXTRACTED_DIR=$(tar -tf "$SDK_FILE" | head -n1 | cut -f1 -d"/")
+        mv "$EXTRACTED_DIR" sdk
 
     # ================= PREPARE SDK =================
     - name: Prepare SDK
