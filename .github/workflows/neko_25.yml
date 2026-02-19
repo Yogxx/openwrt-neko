@@ -19,12 +19,12 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v4
 
-    # ================= EXTRACT VERSION =================
+    # ================= EXTRACT VERSION (FIXED) =================
     - name: Extract version
       id: get_version
       run: |
-        VERSION=$(grep PKG_VERSION luci-app-neko/Makefile | cut -d: -f2 | tr -d ' ')
-        RELEASE=$(grep PKG_RELEASE luci-app-neko/Makefile | cut -d: -f2 | tr -d ' ')
+        VERSION=$(grep PKG_VERSION luci-app-neko/Makefile | sed 's/.*:=//')
+        RELEASE=$(grep PKG_RELEASE luci-app-neko/Makefile | sed 's/.*:=//')
         FULL_VERSION=${VERSION}-r${RELEASE}
 
         echo "FULL_VERSION=$FULL_VERSION" >> $GITHUB_ENV
@@ -55,12 +55,11 @@ jobs:
         EXTRACTED_DIR=$(tar -tf "$SDK_FILE" | head -n1 | cut -f1 -d"/")
         mv "$EXTRACTED_DIR" sdk
 
-    # ================= PREPARE SDK (STABLE FEEDS MODE) =================
+    # ================= PREPARE SDK =================
     - name: Prepare SDK (Stable Mode)
       run: |
         cd sdk
 
-        # Fix Git RPC failures in CI
         git config --global http.postBuffer 524288000
         git config --global http.maxRequests 10
         git config --global core.compression 0
@@ -83,10 +82,9 @@ jobs:
         cd sdk
         make package/luci-app-neko/compile V=s -j$(nproc)
 
-    # ================= PREPARE RELEASE =================
-    - name: Prepare release file
+    # ================= LOCATE APK =================
+    - name: Locate built APK
       run: |
-        mkdir -p release
         FILE=$(find sdk/bin/packages -name "luci-app-neko*.apk" | head -n1)
 
         if [ -z "$FILE" ]; then
@@ -94,15 +92,16 @@ jobs:
           exit 1
         fi
 
-        cp "$FILE" release/luci-app-neko_${FULL_VERSION}.apk
-        ls -lh release
+        cp "$FILE" luci-app-neko_${FULL_VERSION}.apk
+        echo "APK_NAME=luci-app-neko_${FULL_VERSION}.apk" >> $GITHUB_ENV
+        ls -lh luci-app-neko_${FULL_VERSION}.apk
 
     # ================= UPLOAD ARTIFACT =================
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: luci-app-neko_${{ steps.get_version.outputs.version }}
-        path: release/luci-app-neko_${{ steps.get_version.outputs.version }}.apk
+        path: luci-app-neko_${{ steps.get_version.outputs.version }}.apk
 
     # ================= RELEASE =================
     - name: Publish to GitHub Release
@@ -111,4 +110,4 @@ jobs:
       with:
         tag_name: v${{ steps.get_version.outputs.version }}
         name: luci-app-neko v${{ steps.get_version.outputs.version }}
-        files: release/luci-app-neko_${{ steps.get_version.outputs.version }}.apk
+        files: luci-app-neko_${{ steps.get_version.outputs.version }}.apk
