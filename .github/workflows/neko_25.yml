@@ -1,17 +1,35 @@
-name: Build OpenWrt 25.x Full World (APK)
+name: Build luci-app-neko 25
+
+permissions:
+  contents: write
 
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - "v*"
 
 jobs:
   build:
     runs-on: ubuntu-22.04
-    timeout-minutes: 180
+    timeout-minutes: 120
 
     steps:
       # ================= CHECKOUT =================
       - name: Checkout Repository
         uses: actions/checkout@v4
+
+      # ================= GET VERSION =================
+      - name: Extract version from Makefile
+        id: get_version
+        run: |
+          VERSION=$(grep PKG_VERSION luci-app-neko/Makefile | head -n1 | cut -d: -f2 | tr -d ' ')
+          RELEASE=$(grep PKG_RELEASE luci-app-neko/Makefile | head -n1 | cut -d: -f2 | tr -d ' ')
+          FULL_VERSION=${VERSION}-r${RELEASE}
+
+          echo "FULL_VERSION=$FULL_VERSION" >> $GITHUB_ENV
+          echo "version=$FULL_VERSION" >> $GITHUB_OUTPUT
+          echo "Detected version: $FULL_VERSION"
 
       # ================= INSTALL DEPENDENCIES =================
       - name: Install Dependencies
@@ -20,23 +38,22 @@ jobs:
           sudo apt install -y build-essential clang flex bison g++ gawk \
             gcc-multilib g++-multilib gettext git libncurses-dev \
             libssl-dev python3 python3-distutils rsync unzip zlib1g-dev \
-            file wget curl cmake ninja-build ccache
+            file wget curl
 
-      # ================= GIT STABILITY FIX =================
+      # ================= GIT STABILITY =================
       - name: Improve Git Stability
         run: |
           git config --global http.postBuffer 524288000
-          git config --global http.maxRequests 10
           git config --global core.compression 0
 
-      # ================= CLONE OPENWRT 25.x =================
-      - name: Clone OpenWrt (main → 25.x)
+      # ================= CLONE OPENWRT =================
+      - name: Clone OpenWrt 25.x (main)
         run: |
           git clone --depth 1 https://github.com/openwrt/openwrt.git
           cd openwrt
           git checkout main
 
-      # ================= PATCH FEEDS (ANTI RPC ERROR) =================
+      # ================= PATCH FEEDS =================
       - name: Patch feeds to GitHub mirrors
         run: |
           cd openwrt
@@ -46,49 +63,70 @@ jobs:
           sed -i 's|https://git.openwrt.org/feed/telephony.git|https://github.com/openwrt/telephony.git|' feeds.conf.default
 
       # ================= UPDATE FEEDS =================
-      - name: Update & Install Feeds
+      - name: Update and Install Feeds
         run: |
           cd openwrt
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-      # ================= COPY CUSTOM PACKAGE =================
-      - name: Copy luci-app-neko into OpenWrt
+      # ================= COPY PACKAGE =================
+      - name: Copy luci-app-neko
         run: |
           mkdir -p openwrt/package/
           cp -r luci-app-neko openwrt/package/
 
-      # ================= CONFIGURE TARGET =================
-      - name: Configure Build (x86_64 + APK mode)
+      # ================= CONFIGURE =================
+      - name: Configure Build
         run: |
           cd openwrt
-          
           cat <<EOF >> .config
           CONFIG_TARGET_x86=y
           CONFIG_TARGET_x86_64=y
           CONFIG_TARGET_x86_64_Generic=y
-          CONFIG_PACKAGE_luci-app-neko=y
+          CONFIG_PACKAGE_luci-app-neko=m
           CONFIG_USE_APK=y
           EOF
-
           make defconfig
 
-      # ================= FULL WORLD BUILD =================
-      - name: Build Full World (Required for 25.x APK stability)
+      # ================= BUILD TOOLCHAIN =================
+      - name: Build tools & toolchain
         run: |
           cd openwrt
-          make -j1 V=s
+          make tools/install -j1
+          make toolchain/install -j1
 
-      # ================= UPLOAD APK PACKAGES =================
-      - name: Upload Generated APK Files
+      # ================= BUILD PACKAGE =================
+      - name: Compile luci-app-neko
+        run: |
+          cd openwrt
+          make package/luci-app-neko/compile V=s -j1
+
+      # ================= PREPARE RELEASE FILE =================
+      - name: Prepare release file
+        run: |
+          mkdir -p release
+          FILE=$(find openwrt/bin/packages -name "luci-app-neko*.apk" | head -n1)
+
+          if [ -z "$FILE" ]; then
+            echo "APK not found!"
+            exit 1
+          fi
+
+          cp "$FILE" release/luci-app-neko_${FULL_VERSION}.apk
+          ls -lh release
+
+      # ================= UPLOAD ARTIFACT =================
+      - name: Upload Artifact (Manual Run)
         uses: actions/upload-artifact@v4
         with:
-          name: openwrt-25x-apk-packages
-          path: openwrt/bin/packages/**/*.apk
+          name: luci-app-neko_${{ steps.get_version.outputs.version }}
+          path: release/luci-app-neko_${{ steps.get_version.outputs.version }}.apk
 
-      # ================= UPLOAD FIRMWARE =================
-      - name: Upload Firmware Images
-        uses: actions/upload-artifact@v4
+      # ================= CREATE RELEASE =================
+      - name: Publish to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
         with:
-          name: openwrt-25x-firmware
-          path: openwrt/bin/targets/**/*
+          tag_name: v${{ steps.get_version.outputs.version }}
+          name: luci-app-neko v${{ steps.get_version.outputs.version }}
+          files: release/luci-app-neko_${{ steps.get_version.outputs.version }}.apk
