@@ -60,14 +60,14 @@ jobs:
       run: |
         cd sdk
 
-        git config --global http.postBuffer 524288000
-        git config --global http.maxRequests 10
+        git config --global http.postBuffer 1048576000
+        git config --global http.maxRequestBuffer 1048576000
         git config --global core.compression 0
         git config --global http.version HTTP/1.1
 
         export GIT_OPTIONAL_LOCKS=0
 
-        ./scripts/feeds update -a -f
+        ./scripts/feeds update -a -f --depth=1
         ./scripts/feeds install -a
         make defconfig
 
