@@ -33,4 +33,16 @@ define Package/$(PKG_NAME)/install
 	fi
 endef
 
+define Package/$(PKG_NAME)/conffiles
+/etc/config/neko
+endef
+
+define Package/$(PKG_NAME)/postrm
+rm -f /etc/init.d/neko
+rm -rf /etc/neko
+rm -rf /www/luci-static/resources/view/neko
+rm -rf /www/nekoclash
+rm -rf /tmp/.uci/neko
+endef
+
 $(eval $(call BuildPackage,$(PKG_NAME)))
