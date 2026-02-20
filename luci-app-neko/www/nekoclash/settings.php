@@ -280,9 +280,7 @@ $fwstatus     = trim(shell_exec("uci -q get neko.cfg.new_interface"));
     </div>
 </div>
 
-
 <?php include './footer.php'; ?>
-
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
