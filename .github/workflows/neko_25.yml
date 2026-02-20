@@ -67,7 +67,7 @@ jobs:
 
         export GIT_OPTIONAL_LOCKS=0
 
-        ./scripts/feeds update -a -f --depth=1
+        ./scripts/feeds update -a -f
         ./scripts/feeds install -a
         make defconfig
 
