@@ -40,9 +40,7 @@ endef
 define Package/$(PKG_NAME)/postrm
 #!/bin/sh
 if command -v ubus >/dev/null 2>&1; then
-    if ubus list | grep -q "^service.neko\$"; then
-        ubus call service delete '{ "name": "neko" }'
-    fi
+    ubus call service delete '{"name":"neko"}' 2>/dev/null || true
 fi
 
 [ -f /etc/init.d/neko ] && rm -f /etc/init.d/neko
