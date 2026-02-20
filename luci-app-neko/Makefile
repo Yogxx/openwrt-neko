@@ -1,10 +1,14 @@
+# See /LICENSE for more information.
+# This is free software, licensed under the GNU General Public License v3.
+# Copyright (C) 2024 nosignal
+
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-neko
 PKG_VERSION:=1.3.0
 PKG_RELEASE:=4
 PKG_LICENSE:=MIT
-PKG_MAINTAINER:=yogxx
+PKG_MAINTAINER:=nosignal <https://github.com/nosignals/openwrt-neko>
 
 LUCI_TITLE:=LuCI support for Mihomo
 LUCI_DEPENDS:=+luci-base +kmod-tun
