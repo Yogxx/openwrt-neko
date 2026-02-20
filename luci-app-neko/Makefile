@@ -38,11 +38,21 @@ define Package/$(PKG_NAME)/conffiles
 endef
 
 define Package/$(PKG_NAME)/postrm
-rm -f /etc/init.d/neko
-rm -rf /etc/neko
-rm -rf /www/luci-static/resources/view/neko
-rm -rf /www/nekoclash
-rm -rf /tmp/.uci/neko
+#!/bin/sh
+if command -v ubus >/dev/null 2>&1; then
+    if ubus list | grep -q "^service.neko\$"; then
+        ubus call service delete '{ "name": "neko" }'
+    fi
+fi
+
+[ -f /etc/init.d/neko ] && rm -f /etc/init.d/neko
+[ -d /etc/neko ] && rm -rf /etc/neko
+[ -f /etc/config/neko ] && rm -f /etc/config/neko
+[ -d /www/luci-static/resources/view/neko ] && rm -rf /www/luci-static/resources/view/neko
+[ -d /www/nekoclash ] && rm -rf /www/nekoclash
+[ -d /tmp/.uci/neko ] && rm -rf /tmp/.uci/neko
+
+exit 0
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME)))
