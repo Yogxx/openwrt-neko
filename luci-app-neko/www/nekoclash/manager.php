@@ -1,7 +1,6 @@
 <?php
-
 ob_start();
-date_default_timezone_set('Asia/Jakarta'); // FIX TIMEZONE
+date_default_timezone_set('UTC');
 
 include './cfg.php';
 
@@ -12,40 +11,36 @@ $rule_path  = "/etc/neko/rule_provider";
 $arrPath = array($cfg_path, $proxy_path, $rule_path, "BACKUP CONFIG", "RESTORE CONFIG");
 
 function create_table($path){
+    $arr_table = glob("$path/*.yaml");
+    $output = "";
 
-  $arr_table = glob("$path/*.yaml");
-  $output = "";
+    foreach ($arr_table as $file) {
+        $file_info = explode("/", $file);
+        $file_dir  = $file_info[3] ?? '';
+        $file_name = explode(".", $file_info[4]);
 
-  foreach ($arr_table as $file) {
+        $output .= "<tr class=\"text-center\">\n";
+        $output .= "<td class=\"col-4\">".$file_info[4]."<br>[ "
+            .formatSize(filesize($file))." - "
+            .date('Y-m-d H:i:s', filemtime($file))
+            ." ]</td>\n";
 
-    $file_info = explode("/", $file);
-    $file_dir  = $file_info[3] ?? '';
-    $file_name = explode(".", $file_info[4]);
+        $output .= "<td class=\"col-2\">\n";
+        $output .= "<form action=\"configs.php\" method=\"post\">\n";
+        $output .= "<div class=\"btn-group\" role=\"group\">\n";
+        $output .= "<button type=\"submit\" name=\"file_action\" value=\"down@".$file."\" class=\"btn btn-info d-grid\"><i class=\"fa fa-download\"></i> Download</button>\n";
+        $output .= "<button type=\"button\" class=\"btn btn-primary d-grid\" data-bs-toggle=\"modal\" data-bs-target=\"#".$file_dir."_".$file_name[0]."\"><i class=\"fa fa-gear\"></i> Option</button>\n";
+        $output .= "</div>\n</form>\n</td>\n</tr>\n";
+    }
 
-    $output .= "<tr class=\"text-center\">\n";
-    $output .= "<td class=\"col-4\">".$file_info[4]."<br>[ "
-        .formatSize(filesize($file))." - "
-        .date('Y-m-d H:i:s', filemtime($file))
-        ." ]</td>\n";
-
-    $output .= "<td class=\"col-2\">\n";
-    $output .= "<form action=\"configs.php\" method=\"post\">\n";
-    $output .= "<div class=\"btn-group\" role=\"group\">\n";
-    $output .= "<button type=\"submit\" name=\"file_action\" value=\"down@".$file."\" class=\"btn btn-info d-grid\"><i class=\"fa fa-download\"></i> Download</button>\n";
-    $output .= "<button type=\"button\" class=\"btn btn-primary d-grid\" data-bs-toggle=\"modal\" data-bs-target=\"#".$file_dir."_".$file_name[0]."\"><i class=\"fa fa-gear\"></i> Option</button>\n";
-    $output .= "</div>\n</form>\n</td>\n</tr>\n";
-  }
-
-  return $output;
+    return $output;
 }
 
 function create_modal($path) {
-
     $output = "";
     $arr_modal = glob("$path/*.yaml");
 
     foreach ($arr_modal as $file) {
-
         $file_info = explode("/", $file);
         $file_dir  = $file_info[3] ?? '';
         $file_name = explode(".", $file_info[4]);
@@ -75,11 +70,8 @@ function create_modal($path) {
 }
 
 function up_controller($dir) {
-
     header('Content-Type: application/json');
-
     try {
-
         if (!isset($_FILES["file_upload"]) || $_FILES["file_upload"]["error"] !== UPLOAD_ERR_OK)
             throw new Exception("Failed to upload file");
 
@@ -101,20 +93,16 @@ function up_controller($dir) {
         ]);
 
     } catch (Exception $e) {
-
         echo json_encode([
             'status' => 'error',
             'message' => $e->getMessage()
         ]);
     }
-
     exit;
 }
 
 function action_controller($action_str) {
-
     $action = explode("@", $action_str);
-
     if (count($action) != 2)
         return ['status'=>'error','message'=>'Invalid format'];
 
@@ -125,38 +113,25 @@ function action_controller($action_str) {
         return ['status'=>'error','message'=>'File not found'];
 
     switch($command){
-
         case "down":
-
             while (ob_get_level()) ob_end_clean();
-
             header('Content-Type: application/octet-stream');
             header('Content-Disposition: attachment; filename="'.basename($file_path).'"');
             header('Content-Length: '.filesize($file_path));
-
             readfile($file_path);
             exit;
 
-
         case "save":
-
             $content = $_POST['content'] ?? null;
-
             if ($content === null)
                 return ['status'=>'error','message'=>'Content missing'];
-
             file_put_contents($file_path, $content);
-
             return ['status'=>'success','message'=>'File saved'];
 
-
         case "del":
-
             unlink($file_path);
-
             return ['status'=>'success','message'=>'File deleted'];
     }
-
     return ['status'=>'error','message'=>'Invalid action'];
 }
 
@@ -168,31 +143,23 @@ function formatSize($bytes){
 }
 
 function backupConfig(){
-
     while (ob_get_level()) ob_end_clean();
-
     $backup_name = "neko_backup_" . date("Y-m-d_H-i-s") . ".tar.gz";
     $backup_path = "/tmp/" . $backup_name;
-
     shell_exec("tar -czf $backup_path -C /etc/neko config proxy_provider rule_provider 2>/dev/null");
 
-    if (!file_exists($backup_path))
-        die("Backup failed");
+    if (!file_exists($backup_path)) die("Backup failed");
 
     header('Content-Type: application/gzip');
     header("Content-Disposition: attachment; filename=\"$backup_name\"");
     header('Content-Length: '.filesize($backup_path));
-
     readfile($backup_path);
     unlink($backup_path);
     exit;
 }
 
 function restoreConfig(){
-
-    if (!isset($_FILES["file_upload"]))
-        die("No file uploaded");
-
+    if (!isset($_FILES["file_upload"])) die("No file uploaded");
     $tmp  = $_FILES["file_upload"]["tmp_name"];
     $name = basename($_FILES["file_upload"]["name"]);
 
@@ -200,33 +167,25 @@ function restoreConfig(){
         die("Only .tar.gz allowed");
 
     $restore = "/tmp/".$name;
-
     move_uploaded_file($tmp, $restore);
 
     shell_exec("rm -rf /etc/neko/config /etc/neko/proxy_provider /etc/neko/rule_provider 2>/dev/null");
     shell_exec("tar -xzf $restore -C /etc/neko 2>/dev/null");
-
     unlink($restore);
 
     shell_exec("/etc/init.d/neko restart 2>&1");
 
-    echo json_encode(['status'=>'success']);
+    echo json_encode(['status'=>'success','message'=>'Restore Successful']);
     exit;
 }
 
 if(isset($_POST["path_selector"])){
-
-    if($_POST['path_selector'] === 'BACKUP CONFIG')
-        backupConfig();
-
-    if($_POST['path_selector'] === 'RESTORE CONFIG')
-        restoreConfig();
+    if($_POST['path_selector'] === 'BACKUP CONFIG') backupConfig();
+    if($_POST['path_selector'] === 'RESTORE CONFIG') restoreConfig();
 }
 
 if(isset($_POST["file_action"])){
-
     $response = action_controller($_POST["file_action"]);
-
     if(!empty($response)){
         header('Content-Type: application/json');
         echo json_encode($response);
@@ -235,7 +194,6 @@ if(isset($_POST["file_action"])){
 }
 
 if(isset($_POST['action'])){
-
     if($_POST['action'] == 'get_tables'){
         ob_clean();
         echo json_encode([
@@ -258,3 +216,26 @@ if(isset($_POST['action'])){
 }
 
 ?>
+
+<script>
+function restoreFile() {
+    let form = document.getElementById('restoreForm');
+    let formData = new FormData(form);
+    formData.append('path_selector','RESTORE CONFIG');
+
+    fetch('configs.php', {
+        method:'POST',
+        body:formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(data.status === 'success'){
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Restore Failed: '+data.message);
+        }
+    })
+    .catch(err => alert('Error: '+err));
+}
+</script>
