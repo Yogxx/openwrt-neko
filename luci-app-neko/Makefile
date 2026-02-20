@@ -5,7 +5,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-neko
 PKG_VERSION:=1.3.0
-PKG_RELEASE:=7
+PKG_RELEASE:=5
 PKG_LICENSE:=MIT
 PKG_MAINTAINER:=nosignal <https://github.com/nosignals/openwrt-neko>
 
@@ -34,9 +34,9 @@ endef
 
 define Package/$(PKG_NAME)/prerm
 #!/bin/sh
-ubus call service delete '{"name":"neko"}' >/dev/null 2>&1 || true
-exit 0
-endef
+if ubus list service 2>/dev/null | grep -q '"neko"'; then
+    ubus call service delete '{"name":"neko"}' >/dev/null 2>&1
+fi
 
 define Package/$(PKG_NAME)/postrm
 #!/bin/sh
