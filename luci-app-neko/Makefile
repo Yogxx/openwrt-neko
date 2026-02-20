@@ -37,6 +37,8 @@ define Package/$(PKG_NAME)/prerm
 if ubus list service 2>/dev/null | grep -q '"neko"'; then
     ubus call service delete '{"name":"neko"}' >/dev/null 2>&1
 fi
+exit 0
+endef
 
 define Package/$(PKG_NAME)/postrm
 #!/bin/sh
