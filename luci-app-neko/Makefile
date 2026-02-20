@@ -15,11 +15,9 @@ LUCI_PKGARCH:=all
 
 include $(TOPDIR)/feeds/luci/luci.mk
 
-
 define Package/$(PKG_NAME)/description
  LuCI support for Mihomo core.
 endef
-
 
 define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)
@@ -49,6 +47,5 @@ rm -rf /tmp/.uci/neko 2>/dev/null || true
 
 exit 0
 endef
-
 
 $(eval $(call BuildPackage,$(PKG_NAME)))
