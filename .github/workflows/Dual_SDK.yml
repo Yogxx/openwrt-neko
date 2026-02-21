@@ -117,8 +117,9 @@ jobs:
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ env.FINAL_NAME }}
+        name: luci-app-neko_${{ steps.get_version.outputs.version }}
         path: ${{ env.FINAL_NAME }}
+        overwrite: true
 
     - name: Publish Release
       if: startsWith(github.ref, 'refs/tags/')
