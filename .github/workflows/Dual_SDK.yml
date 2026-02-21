@@ -49,7 +49,7 @@ jobs:
         FILE=$(basename "$URL")
 
         wget -q --show-progress "$URL"
-        tar --use-compress-program=unzstd -xvf "$FILE"
+        tar --use-compress-program=unzstd -xf "$FILE"
 
         DIR=$(tar -tf "$FILE" | head -n1 | cut -d/ -f1)
         mv "$DIR" sdk
