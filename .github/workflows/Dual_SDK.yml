@@ -110,7 +110,7 @@ jobs:
           FINAL="luci-app-neko_${VERSION}.apk"
         fi
 
-        cp "$FILE" "../../$FINAL"
+        cp "$FILE" "$GITHUB_WORKSPACE/$FINAL"
         echo "FINAL_NAME=$FINAL" >> $GITHUB_ENV
         echo "Built: $FINAL"
 
