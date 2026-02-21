@@ -32,21 +32,11 @@ define Package/$(PKG_NAME)/install
 	fi
 endef
 
-define Package/$(PKG_NAME)/prerm
-#!/bin/sh
-if ubus list service 2>/dev/null | grep -q '"neko"'; then
-    ubus call service delete '{"name":"neko"}' >/dev/null 2>&1
-fi
-exit 0
-endef
-
 define Package/$(PKG_NAME)/postrm
 #!/bin/sh
-
 rm -rf /etc/neko 2>/dev/null || true
 rm -rf /etc/config/neko 2>/dev/null || true
 rm -rf /tmp/.uci/neko 2>/dev/null || true
-
 exit 0
 endef
 
