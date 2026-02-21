@@ -1,4 +1,4 @@
-name: Build luci-app-neko (OpenWrt 25.x SDK)
+name: Build luci-app-neko (OpenWrt 25.x Test)
 
 permissions:
   contents: write
