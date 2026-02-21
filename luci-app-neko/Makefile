@@ -10,7 +10,7 @@ PKG_LICENSE:=MIT
 PKG_MAINTAINER:=nosignal <https://github.com/nosignals/openwrt-neko>
 
 LUCI_TITLE:=LuCI support for Mihomo
-LUCI_DEPENDS:=+kmod-tun +bash +curl +php8 +php8-cgi
+LUCI_DEPENDS:=+kmod-tun
 LUCI_PKGARCH:=all
 
 include $(TOPDIR)/feeds/luci/luci.mk
