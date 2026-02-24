@@ -48,7 +48,7 @@ function get_dashboard_config($core_mode, $selected_config) {
         ];
     } elseif ($core_mode == 'singbox') {
         global $neko_dir;
-        $config_file = "$neko_dir/config/singbox.json";
+        $config_file = "$neko_dir/config/config.json";
         if (file_exists($config_file)) {
             $config = json_decode(file_get_contents($config_file), true);
             $clash_api = $config['experimental']['clash_api'] ?? [];
