@@ -116,6 +116,6 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/')
       uses: softprops/action-gh-release@v2
       with:
-        tag_name: v${{ steps.get_version.outputs.version }}
-        name: luci-app-neko v${{ steps.get_version.outputs.version }}
+        tag_name: v${{ github.ref_name }}
+        name: luci-app-neko v${{ github.ref_name }}
         files: ${{ env.IPK_PATH }}
