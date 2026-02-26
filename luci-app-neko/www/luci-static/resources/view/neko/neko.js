@@ -1,35 +1,17 @@
-/*
- * Copyright (C) 2024 Nosignal <https://github.com/nosignals>
- * 
- * Contributors:
- * - bobbyunknown <https://github.com/bobbyunknown>
- *
- * https://opensource.org/license/mit
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 'use strict';
 'require view';
 'require uci';
 'require ui';
 'require fs';
 'require form';
+'require rpc';
+
+var callServiceList = rpc.declare({
+    object: 'service',
+    method: 'list',
+    params: ['name'],
+    expect: { '': {} }
+});
 
 return view.extend({
     handleServiceAction: function(action) {
@@ -73,16 +55,7 @@ return view.extend({
     load: function() {
         return Promise.all([
             uci.load('neko'),
-            L.resolveDefault(fs.stat('/etc/neko/tmp/neko_pid.txt'), null).then(function(stat) {
-                if (stat)
-                    return fs.read('/etc/neko/tmp/neko_pid.txt');
-                return '';
-            }),
-            L.resolveDefault(fs.stat('/etc/neko/tmp/singbox_pid.txt'), null).then(function(stat) {
-                if (stat)
-                    return fs.read('/etc/neko/tmp/singbox_pid.txt');
-                return '';
-            })
+            callServiceList('neko')
         ]).then(function(data) {
             var savedNotification = localStorage.getItem('neko_notification');
             if (savedNotification) {
@@ -99,10 +72,26 @@ return view.extend({
         let core_mode = uci.get('neko', 'cfg', 'core_mode');
         
         let isRunning = false;
+        let serviceData = data[1];
+        
         if (core_mode === 'mihomo') {
-            isRunning = data[1].trim() !== '';
+            if (serviceData.neko && serviceData.neko.instances && serviceData.neko.instances.instance1) {
+                isRunning = serviceData.neko.instances.instance1.running;
+            }
         } else if (core_mode === 'singbox') {
-            isRunning = data[2].trim() !== '';
+            if (serviceData.neko && serviceData.neko.instances) {
+                // Cek instance2
+                if (serviceData.neko.instances.instance2) {
+                    isRunning = serviceData.neko.instances.instance2.running;
+                } else {
+                    for (let instance in serviceData.neko.instances) {
+                        if (serviceData.neko.instances[instance].running) {
+                            isRunning = true;
+                            break;
+                        }
+                    }
+                }
+            }
         }
 
         if (show_luci === '1') {
@@ -130,7 +119,7 @@ return view.extend({
                         to { transform: rotate(360deg); }
                     }
                 `),
-                E('h2', {}, [ _('NekoClash') ]),
+                E('h2', {}, [ _('𝙽𝚎𝚔𝚘𝙲𝚕𝚊𝚜𝚑') ]),
                 E('div', { 'class': 'cbi-map-descr', 'style': 'margin-bottom: 10px;' }, [ 
                     E('span', { 'style': 'font-weight: bold; font-size: 20px;' }, [ _('Mihomo/Singbox Core') ]),
                     E('div', { 'style': 'margin-top: 10px;padding-left: 10px;' }, [
