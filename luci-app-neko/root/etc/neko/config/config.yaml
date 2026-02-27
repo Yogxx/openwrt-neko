@@ -1,50 +1,57 @@
-redir-port: 7892
+redir-port: 7891
 tproxy-port: 7894
 port: 7890
-socks-port: 7891
+socks-port: 7892
 mixed-port: 7893
 mode: rule
 log-level: silent
 allow-lan: true
+#routing-mark: 0x100
 tcp-concurrent: true
 unified-delay: true
 keep-alive-interval: 15
 keep-alive-idle: 600
 disable-keep-alive: false
+enable-process: true
+find-process-mode: always
 external-controller: "0.0.0.0:9090"
 secret: one
 bind-address: "0.0.0.0"
 external-ui: "ui"
-enable-process: true
-find-process-mode: always
+external-ui-name: zashboard
+external-ui-url: https://github.com/Zephyruso/zashboard/releases/latest/download/dist-cdn-fonts.zip
 ipv6: false
 tun:
   enable: true
-  device: Meta
   stack: system
-  mtu: 1500
-  gso: true
-  gso-max-size: 65536
-  endpoint-independent-nat: true
+  device: Meta
   dns-hijack:
     - tcp://any:53
     - udp://any:53
+  auto-route: true
+  auto-redirect: true
+  auto-detect-interface: true
+  disable-icmp-forwarding: false
+  endpoint-independent-nat: true
 dns:
   enable: true
   cache-algorithm: arc
   ipv6: false
+  listen: "0.0.0.0:1053"
   enhanced-mode: redir-host
-  listen: 0.0.0.0:7874
   respect-rules: true
   nameserver:
-    - "8.8.8.8" #"https://dns.google/dns-query"
-    - "1.1.1.1" #"https://dns.cloudflare.com/dns-query"
+    - 8.8.8.8
+    - 1.1.1.1
+    #- https://dns.google/dns-query
+    #- https://dns.cloudflare.com/dns-query
   proxy-server-nameserver:
-    - "112.215.198.248"
-    - "112.215.198.254"
+    - 112.215.198.254
+    - 112.215.198.248
   default-nameserver:
-    - "8.8.8.8"
-    - "1.1.1.1"
+    - 8.8.8.8
+    - 1.1.1.1
+  use-hosts: true
 profile:
   store-selected: true
 sniffer:
@@ -90,13 +97,6 @@ rule-providers:
     url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/whatsapp.mrs"
     path: "./rule_provider/whatsapp.mrs"
     interval: 86400
-  R_youtube:
-    type: http
-    behavior: domain
-    format: mrs
-    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/youtube.mrs"
-    path: "./rule_provider/youtube.mrs"
-    interval: 86400
 proxy-providers:
   Proxy:
     type: file
@@ -132,7 +132,7 @@ proxy-groups:
       - FALLBACK
       - SELECT
 rules:
-  - AND,((NETWORK,udp),(AND,((RULE-SET,R_youtube),(DST-PORT,443)))),REJECT-DROP
+  - AND,((NETWORK,udp),(DST-PORT,443)),REJECT-DROP
   - RULE-SET,R_whatsapp,WHATSAPP
   - RULE-SET,R_ads_all,REJECT-DROP
   - RULE-SET,R_nsfw,REJECT-DROP
