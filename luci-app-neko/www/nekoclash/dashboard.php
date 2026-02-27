@@ -97,9 +97,9 @@ $zashboard_link = $_SERVER['HTTP_HOST'] . ":" . $port . "/ui/zashboard/?hostname
                                 ZASHBOARD
                             </a>
                         <?php else: ?>
-                            <a class="btn btn-outline-primary" target="_blank" href="http://<?=$yacd_link ?>">
+                            <a class="btn btn-outline-primary" target="_blank" href="http://<?=$zashboard_link ?>">
                                 <i data-feather="external-link" class="feather-sm me-2"></i>
-                                SINGBOX-YACD
+                                ZASHBOARD
                             </a>
                         <?php endif; ?>
                     </div>
