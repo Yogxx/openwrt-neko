@@ -1,0 +1,219 @@
+{
+  "log": {
+    "level": "panic",
+    "timestamp": true
+  },
+  "dns": {
+    "servers": [
+      {
+        "type": "udp",
+        "tag": "google",
+        "detour": "Select",
+        "server": "8.8.8.8"
+      },
+      {
+        "type": "udp",
+        "tag": "cloudflare",
+        "detour": "Select",
+        "server": "1.1.1.1"
+      },
+      {
+        "type": "udp",
+        "tag": "xl",
+        "server": "112.215.198.248"
+      }
+    ],
+    "final": "google",
+    "strategy": "ipv4_only"
+  },
+  "inbounds": [
+    {
+      "type": "tun",
+      "tag": "tun-in",
+      "interface_name": "Meta",
+      "mtu": 9000,
+      "auto_route": true,
+      "auto_redirect": true,
+      "strict_route": true,
+      "stack": "system",
+      "address": [
+        "172.18.0.1/30",
+        "fdfe:dcba:9876::1/126"
+      ]
+    }
+  ],
+  "outbounds": [
+    {
+      "type": "selector",
+      "tag": "Select",
+      "outbounds": [
+        "Auto",
+        "TROJAN",
+        "VMESS",
+        "VLESS"
+      ],
+      "default": "Auto"
+    },
+    {
+      "type": "selector",
+      "tag": "Whatsapp",
+      "outbounds": [
+        "Auto",
+        "Select"
+      ],
+      "default": "Auto"
+    },
+    {
+      "type": "urltest",
+      "tag": "Auto",
+      "outbounds": [
+        "TROJAN",
+        "VMESS",
+        "VLESS"
+      ],
+      "url": "https://www.gstatic.com/generate_204",
+      "interval": "3m0s",
+      "tolerance": 50
+    },
+    {
+      "tag": "TROJAN",
+      "type": "trojan",
+      "server": "cdn.trojan.com",
+      "server_port": 443,
+      "password": "22222222-3333-5555-6666-777777777777",
+      "tls": {
+        "enabled": true,
+        "server_name": "trojan.com",
+        "insecure": true
+      },
+      "transport": {
+        "type": "ws",
+        "path": "/trojan-ws",
+        "headers": {
+          "Host": "trojan.com"
+        }
+      }
+    },
+    {
+      "tag": "VMESS",
+      "type": "vmess",
+      "server": "cdn.vmess.com",
+      "server_port": 443,
+      "uuid": "22222222-3333-5555-6666-777777777777",
+      "security": "auto",
+      "tls": {
+        "enabled": true,
+        "server_name": "vmess.com",
+        "insecure": true
+      },
+      "transport": {
+        "type": "ws",
+        "path": "/vmess-ws",
+        "headers": {
+          "Host": "vmess.com"
+        }
+      }
+    },
+    {
+      "tag": "VLESS",
+      "type": "vless",
+      "server": "cdn.vless.com",
+      "server_port": 443,
+      "uuid": "22222222-3333-5555-6666-777777777777",
+      "tls": {
+        "enabled": true,
+        "server_name": "vless.com",
+        "insecure": true
+      },
+      "transport": {
+        "type": "ws",
+        "path": "/vless-ws",
+        "headers": {
+          "Host": "vless.com"
+        }
+      }
+    },
+    {
+      "type": "direct",
+      "tag": "direct"
+    }
+  ],
+  "route": {
+    "rules": [
+      {
+        "action": "sniff",
+        "sniffer": [
+          "http",
+          "tls",
+          "quic",
+          "dns"
+        ]
+      },
+      {
+        "type": "logical",
+        "mode": "or",
+        "rules": [
+          {
+            "port": 53
+          },
+          {
+            "protocol": "dns"
+          }
+        ],
+        "action": "hijack-dns"
+      },
+      {
+        "ip_is_private": true,
+        "outbound": "direct"
+      },
+      {
+        "rule_set": "whatsapp",
+        "outbound": "Whatsapp"
+      },
+      {
+        "rule_set": [
+          "block_ads",
+          "block_nsfw"
+        ],
+        "action": "reject"
+      }
+    ],
+    "rule_set": [
+      {
+        "type": "local",
+        "tag": "whatsapp",
+        "path": "/etc/neko/rule_provider/whatsapp.srs",
+        "format": "binary"
+      },
+      {
+        "type": "local",
+        "tag": "block_ads",
+        "path": "/etc/neko/rule_provider/block_ads.srs",
+        "format": "binary"
+      },
+      {
+        "type": "local",
+        "tag": "block_nsfw",
+        "path": "/etc/neko/rule_provider/block_nsfw.srs",
+        "format": "binary"
+      }
+    ],
+    "final": "Select",
+    "auto_detect_interface": true,
+    "default_domain_resolver": "xl"
+  },
+  "experimental": {
+    "cache_file": {
+      "enabled": true,
+      "path": "/etc/neko/tmp/cache.db"
+    },
+    "clash_api": {
+      "external_controller": "0.0.0.0:9090",
+      "external_ui": "/etc/neko/ui",
+      "external_ui_download_url": "https://gh-proxy.com/https://github.com/Zephyruso/zashboard/archive/refs/heads/gh-pages.zip",
+      "external_ui_download_detour": "Auto",
+      "secret": "one",
+      "default_mode": "rule"
+    }
+  }
+}
