@@ -16,7 +16,7 @@ $core_mode = exec("uci -q get neko.cfg.core_mode");
 
 if(isset($_POST['config_content']) && isset($_POST['save_config'])){
     if ($core_mode == 'singbox') {
-        $config_file = "$neko_dir/config/singbox.json";
+        $config_file = "$neko_dir/config/config.json";
         file_put_contents($config_file, $_POST['config_content']);
     } else {
         if(isset($selected_config) && file_exists($selected_config)) {
@@ -359,7 +359,7 @@ if(isset($_POST["file_action"])) {
                                     style="height: 400px; background: transparent; color: inherit; resize: none;"
                                 ><?php
                                     if ($core_mode == 'singbox') {
-                                        $config_file = "/etc/neko/config/singbox.json";
+                                        $config_file = "/etc/neko/config/config.json";
                                         if (file_exists($config_file)) {
                                             echo trim(file_get_contents($config_file));
                                         }
