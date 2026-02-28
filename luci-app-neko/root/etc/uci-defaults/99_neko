@@ -26,6 +26,3 @@ else
     echo "[ `date +%T` ] - No Old Files. Checking Files..."
     files_check
 fi
-
-uci set neko.cfg.enabled='0'
-uci commit neko
