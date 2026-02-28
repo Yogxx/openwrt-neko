@@ -6,19 +6,44 @@ STOP=10
 
 SINGBOX="/usr/bin/sing-box"
 MIHOMO="/usr/bin/mihomo"
-CONFIG_SB="/etc/neko/config/config.json"
-CONFIG_MH="/etc/neko/config/config.yaml"
 
 start_service() {
+    enabled=$(uci -q get neko.cfg.enabled)
+    [ "$enabled" = "1" ] || {
+        logger "NEKO: disabled, not starting"
+        return 0
+    }
+
     core=$(uci -q get neko.cfg.core_mode)
-    logger "NEKO: start ($core)"
+    [ -n "$core" ] || core="mihomo"
+
+    # Auto config based on core
+    if [ "$core" = "singbox" ]; then
+        config="/etc/neko/config/config.json"
+        binary="/usr/bin/sing-box"
+        cmd="run -c $config"
+    else
+        config="/etc/neko/config/config.yaml"
+        binary="/usr/bin/mihomo"
+        cmd="-d /etc/neko -f $config"
+    fi
+
+    # Validate binary
+    [ -x "$binary" ] || {
+        logger "NEKO: binary not found: $binary"
+        return 1
+    }
+
+    # Validate config file
+    [ -f "$config" ] || {
+        logger "NEKO: config not found: $config"
+        return 1
+    }
+
+    logger "NEKO: start ($core) using $config"
 
     procd_open_instance
-    if [ "$core" = "singbox" ]; then
-        procd_set_param command "$SINGBOX" run -c "$CONFIG_SB"
-    else
-        procd_set_param command "$MIHOMO" -d /etc/neko -f "$CONFIG_MH"
-    fi
+    procd_set_param command $binary $cmd
     procd_set_param respawn 5 10 5
     procd_set_param stdout 1
     procd_set_param stderr 1
@@ -40,11 +65,16 @@ reload_service() {
 add_firewall_rule() {
     RULE="neko_tun_rule"
 
+    # wait interface max 5 sec
     for i in $(seq 1 5); do
         ip link show Meta >/dev/null 2>&1 && break
         sleep 1
     done
-    ip link show Meta >/dev/null 2>&1 || return 0
+
+    ip link show Meta >/dev/null 2>&1 || {
+        logger "NEKO: Meta interface not found"
+        return 0
+    }
 
     uci -q delete firewall.$RULE
     uci set firewall.$RULE="rule"
@@ -61,6 +91,7 @@ add_firewall_rule() {
 
 remove_firewall_rule() {
     RULE="neko_tun_rule"
+
     uci -q delete firewall.$RULE
     uci commit firewall
     fw4 reload
