@@ -204,8 +204,8 @@
   },
   "experimental": {
     "cache_file": {
-      "enabled": true,
-      "path": "/etc/neko/tmp/cache.db"
+      "enabled": false,
+      "path": "/tmp/cache.db"
     },
     "clash_api": {
       "external_controller": "0.0.0.0:9090",
