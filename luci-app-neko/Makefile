@@ -5,7 +5,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-neko
 PKG_VERSION:=1.3.0
-PKG_RELEASE:=7
+PKG_RELEASE:=8
 PKG_LICENSE:=MIT
 PKG_MAINTAINER:=nosignal <https://github.com/nosignals/openwrt-neko>
 
