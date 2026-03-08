@@ -19,6 +19,11 @@ Features
 - Configs, Proxy, and Rules can edit on webui
 - xray/v2ray config converter
 
+Prerequisites
+---
+- firewall4
+- OpenWrt >= 24.10
+
 Packages list
 ---
 | Packages | Version | Information |
@@ -27,7 +32,7 @@ Packages list
 | mihomo | <div align="center"> [ ` 1.19.20 ` ](https://github.com/Yogxx/openwrt-neko/releases/tag/core_1.19.20_1.12.21)</div> | Latest stable version on [MetaCubeX](https://github.com/MetaCubeX/mihomo/releases) |
 | sing-box | <div align="center"> [ ` 1.12.21 ` ](https://github.com/Yogxx/openwrt-neko/releases/tag/core_1.19.20_1.12.21) </div> | Original [Repository](https://github.com/SagerNet/sing-box/releases) |
 
-Manual Installation
+<details><summary>Manual Installation</summary>
 ---
 1. Download
 [mihomo](https://github.com/Yogxx/openwrt-neko/releases/tag/core_1.19.20_1.12.21) & [luci-app-neko](https://github.com/Yogxx/openwrt-neko/releases/tag/neko-dev) install ` sing-box ` if needed
@@ -45,7 +50,7 @@ apk update && apk add php8 php8-cgi kmod-tun bash curl jq ip-full ca-bundle
 - ` apk update ` <br>
 - ` apk add --allow-untrusted *.apk `
 7. Done, check your LUCI on openwrt
-
+</details>
 
 Updating
 ---
