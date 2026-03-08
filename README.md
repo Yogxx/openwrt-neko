@@ -32,25 +32,23 @@ Packages list
 | mihomo | <div align="center"> [ ` 1.19.20 ` ](https://github.com/Yogxx/openwrt-neko/releases/tag/core_1.19.20_1.12.21)</div> | Latest stable version on [MetaCubeX](https://github.com/MetaCubeX/mihomo/releases) |
 | sing-box | <div align="center"> [ ` 1.12.21 ` ](https://github.com/Yogxx/openwrt-neko/releases/tag/core_1.19.20_1.12.21) </div> | Original [Repository](https://github.com/SagerNet/sing-box/releases) |
 
-<details><summary>Manual Installation</summary>
+Manual Installation
+---
 1. Download
 [mihomo](https://github.com/Yogxx/openwrt-neko/releases/tag/core_1.19.20_1.12.21) & [luci-app-neko](https://github.com/Yogxx/openwrt-neko/releases/tag/neko-dev) install ` sing-box ` if needed
 3. install requirement depedencies
 ```bash
 apk update && apk add php8 php8-cgi kmod-tun bash curl jq ip-full ca-bundle
 ```
-5. upload to root <br>
-- ` mihomo-*.apk `<br>
-- ` luci-app-neko-*.apk `<br>
-- ` sing-box-*.apk ` if needed <br>
-- make sure there are only those 3 files
-6. run command <br>
-- ` cd ` <br>
-- ` apk update ` <br>
-- ` apk add --allow-untrusted *.apk `
-7. Done, check your LUCI on openwrt
-</details>
-
+```
+# you can install from shell
+# for opkg
+opkg install mihomo
+opkg install luci-app-neko
+# for apk
+apk add --allow-untrusted mihomo
+apk add --allow-untrusted luci-app-neko
+```
 Updating
 ---
 - `Rausah`
