@@ -41,33 +41,14 @@ Manual Installation
 apk update && apk add php8 php8-cgi kmod-tun bash curl jq ip-full ca-bundle
 ```
 ```
-# you can install from shell
 # for opkg
-opkg install mihomo
-opkg install luci-app-neko
+opkg install luci-app-neko*.ipk
 # for apk
-apk add --allow-untrusted mihomo
-apk add --allow-untrusted luci-app-neko
+apk add --allow-untrusted luci-app-neko*.apk
 ```
 Updating
 ---
 - `Rausah`
-
-Compiling
----
-#### 1. Add feeds
-```bash
-echo "src-git neko https://github.com/Yogxx/openwrt-neko.git;main" >> "feeds.conf.default"
-```
-#### 2. Update & Install feeds
-```bash
-./scripts/feeds update -a
-./scripts/feeds install -a
-```
-#### 3. Make Packages
-```bash
-make package/luci-app-neko/compile
-```
 
 About
 ---
