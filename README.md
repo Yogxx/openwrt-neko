@@ -22,7 +22,7 @@ Features
 Prerequisites
 ---
 - firewall4
-- OpenWrt >= 24.10
+- OpenWrt >= 23.05
 
 Packages list
 ---
@@ -40,6 +40,9 @@ Manual Installation
 ```bash
 apk update && apk add php8 php8-cgi kmod-tun bash curl jq ip-full ca-bundle
 ```
+```bash
+opkg update && opkg install php8 php8-cgi kmod-tun bash curl jq ip-full ca-bundle
+```
 ```
 # for opkg
 opkg install luci-app-neko*.ipk
@@ -48,7 +51,7 @@ apk add --allow-untrusted luci-app-neko*.apk
 ```
 Updating
 ---
-- `Rausah`
+- `-`
 
 About
 ---
