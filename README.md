@@ -33,7 +33,6 @@ Packages list
 | sing-box | <div align="center"> [ ` 1.12.21 ` ](https://github.com/Yogxx/openwrt-neko/releases/tag/core_1.19.20_1.12.21) </div> | Original [Repository](https://github.com/SagerNet/sing-box/releases) |
 
 <details><summary>Manual Installation</summary>
----
 1. Download
 [mihomo](https://github.com/Yogxx/openwrt-neko/releases/tag/core_1.19.20_1.12.21) & [luci-app-neko](https://github.com/Yogxx/openwrt-neko/releases/tag/neko-dev) install ` sing-box ` if needed
 3. install requirement depedencies
