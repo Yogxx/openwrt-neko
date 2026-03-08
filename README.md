@@ -34,8 +34,7 @@ Packages list
 
 Manual Installation
 ---
-1. Download
-[mihomo](https://github.com/Yogxx/openwrt-neko/releases/tag/core_1.19.20_1.12.21) & [luci-app-neko](https://github.com/Yogxx/openwrt-neko/releases/tag/neko-dev) install ` sing-box ` if needed
+1. Download ` mihomo ` & [luci-app-neko](https://github.com/Yogxx/openwrt-neko/releases/tag/neko-dev) install ` sing-box ` if needed
 3. install requirement depedencies
 ```bash
 apk update && apk add php8 php8-cgi kmod-tun bash curl jq ip-full ca-bundle
