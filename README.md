@@ -29,18 +29,18 @@ Packages list
 | Packages | Version | Information |
 |---|---|---|
 | luci-app-neko | <div align="center"> [ ` 1.3.0 ` ](https://github.com/Yogxx/openwrt-neko/releases) </div> | Include `config simple rules` files |
-| mihomo | <div align="center"> [ ` 1.19.20 ` ](https://github.com/Yogxx/openwrt-neko/releases/tag/core_1.19.20_1.12.21)</div> | Latest stable version on [MetaCubeX](https://github.com/MetaCubeX/mihomo/releases) |
-| sing-box | <div align="center"> [ ` 1.12.21 ` ](https://github.com/Yogxx/openwrt-neko/releases/tag/core_1.19.20_1.12.21) </div> | Original [Repository](https://github.com/SagerNet/sing-box/releases) |
+| mihomo | <div align="center"> [ ` 1.19.21 ` ](https://github.com/Yogxx/openwrt-neko/releases/tag/core_1.19.21_1.12.24)</div> | Latest stable version on [MetaCubeX](https://github.com/MetaCubeX/mihomo/releases) |
+| sing-box | <div align="center"> [ ` 1.12.24 ` ](https://github.com/Yogxx/openwrt-neko/releases/tag/core_1.19.21_1.12.24) </div> | Original [Repository](https://github.com/SagerNet/sing-box/releases) |
 
 Manual Installation
 ---
 1. Download ` mihomo ` & [luci-app-neko](https://github.com/Yogxx/openwrt-neko/releases/tag/neko-dev) install ` sing-box ` if needed
 3. install requirement depedencies
 ```bash
-apk update && apk add php8 php8-cgi kmod-tun bash curl jq ip-full ca-bundle
+apk update && apk add kmod-tun kmod-nft-tproxy kmod-nft-nat ip-full php8 php8-cgi
 ```
 ```bash
-opkg update && opkg install php8 php8-cgi kmod-tun bash curl jq ip-full ca-bundle
+opkg update && opkg install kmod-tun kmod-nft-tproxy kmod-nft-nat ip-full php8 php8-cgi
 ```
 ```
 # for opkg
