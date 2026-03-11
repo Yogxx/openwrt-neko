@@ -26,49 +26,52 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=mihomo
-PKG_RELEASE:=2
 PKG_VERSION:=1.19.21
+PKG_RELEASE:=1
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
-PKG_SOURCE_URL:=https://codeload.github.com/MetaCubeX/mihomo/tar.gz/v$(PKG_VERSION)?
+PKG_SOURCE_URL:=https://codeload.github.com/MetaCubeX/mihomo/tar.gz/v$(PKG_VERSION)
 PKG_HASH:=5ec56180650d95f8d4898af6c9c21afae8f8becfa1e613a8f14a8f3da45646c8
 
 PKG_LICENSE:=MIT
-PKG_MAINTAINER:=nosignals
+PKG_MAINTAINER:=OpenWrt
 
 PKG_BUILD_DEPENDS:=golang/host
 PKG_BUILD_PARALLEL:=1
 PKG_BUILD_FLAGS:=no-mips16
 
 GO_PKG:=github.com/metacubex/mihomo
-GO_PKG_BUILD_PKG:=$(GO_PKG)/cmd/mihomo
-GO_PKG_LDFLAGS_X:=$(GO_PKG)/constant.Version=v$(PKG_VERSION)
-GO_PKG_TAGS:=with_gvisor,with_clash_api,with_lwip
+GO_PKG_BUILD_PKG:=$(GO_PKG)
+
+GO_PKG_LDFLAGS_X:= \
+	$(GO_PKG)/constant.Version=v$(PKG_VERSION)
+
+GO_PKG_TAGS:=with_gvisor with_clash_api
 
 include $(INCLUDE_DIR)/package.mk
 include $(TOPDIR)/feeds/packages/lang/golang/golang-package.mk
 
-define Package/$(PKG_NAME)
+define Package/mihomo
   SECTION:=net
   CATEGORY:=Network
-  TITLE:=Universal proxy platform.
+  TITLE:=Universal proxy platform
   URL:=https://wiki.metacubex.one
   DEPENDS:=$(GO_ARCH_DEPENDS) +ca-bundle +ip-full +kmod-tun
   USERID:=mihomo=7890:mihomo=7890
 endef
 
-define Package/$(PKG_NAME)/description
- Mihomo kernel with VMess, VLESS, Shadowsocks, Trojan, Snell, TUIC, Hysteria protocol.
+define Package/mihomo/description
+ Mihomo proxy core with VMess, VLESS, Shadowsocks, Trojan and more.
 endef
 
-define Package/$(PKG_NAME)/install
+define Package/mihomo/install
 	$(call GoPackage/Package/Install/Bin,$(1))
 endef
 
 define Build/Prepare
 	$(Build/Prepare/Default)
-	$(RM) -r $(PKG_BUILD_DIR)/rules/logic_test
+	rm -rf $(PKG_BUILD_DIR)/rules/logic_test
 endef
 
-$(eval $(call GoBinPackage,$(PKG_NAME)))
-$(eval $(call BuildPackage,$(PKG_NAME)))
+$(eval $(call GoBinPackage,mihomo))
+$(eval $(call BuildPackage,mihomo))
