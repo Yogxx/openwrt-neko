@@ -16,7 +16,8 @@ on:
         required: true
         default: '1.12.21'
         type: string
-jobs: 
+
+jobs:
   build_ipk:
     permissions:
       contents: write
@@ -26,26 +27,27 @@ jobs:
       fail-fast: false
       matrix:
         release:
-          - 25.12.0-rc4
+          - 25.12.0
         arch:
           - x86_64
           - aarch64_cortex-a53
           - aarch64_cortex-a72
           - aarch64_generic
-          
+          - arm_cortex-a9
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
           ref: main
-        
+
       - name: Preparing Neko
         run: |
-              echo ""
-              mkdir feeds artifacts
-              cp -rf ./mihomo ./feeds
-              cp -rf ./sing-box ./feeds
-        
+          echo ""
+          mkdir feeds artifacts
+          cp -rf ./mihomo ./feeds
+          cp -rf ./sing-box ./feeds
+
       - name: Building Kernel Packages
         uses: nosignals/gh-action-sdk@main
         env:
@@ -54,37 +56,12 @@ jobs:
           FEED_DIR: ${{ github.workspace }}/feeds
           PACKAGES: mihomo sing-box
           NO_SHFMT_CHECK: 1
-        
-      - name: Delivering Package
-        uses: actions/upload-artifact@v4
-        with:
-          name: neko-${{ matrix.release }}_${{ matrix.arch }}
-          path: |
-            ${{ github.workspace }}/artifacts/bin/packages/${{ matrix.arch }}/action/mihomo*
-            ${{ github.workspace }}/artifacts/bin/packages/${{ matrix.arch }}/action/sing-box*
 
-  push_packages:
-    needs: build_ipk
-    name: Push Packages to Release
-    permissions:
-      contents: write  # To push a branch
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download temporary artifact
-        uses: actions/download-artifact@v4
-        
-      - name: Moving artifact to releases
-        shell: bash
-        run: |
-          mkdir ./release
-          cp -rf ./neko-*_*/*mihomo* ./release/ || true
-          cp -rf ./neko-*_*/*sing-box* ./release/ || true
-        
-      - name: Upload release asset
+      - name: Upload to GitHub Releases
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ./release/*
+          file: ${{ github.workspace }}/artifacts/bin/packages/${{ matrix.arch }}/action/*
           overwrite: true
           tag: core_${{ inputs.mihomo_version }}_${{ inputs.singbox_version }}
           prerelease: true
@@ -94,10 +71,11 @@ jobs:
             ### Mihomo Kernel ${{ inputs.mihomo_version }}
             - Changelog : [v${{ inputs.mihomo_version }}](https://github.com/MetaCubeX/mihomo/releases/tag/v${{ inputs.mihomo_version }})
             - Wiki : [wiki.metacubex.one](https://wiki.metacubex.one)
-            
+
             ### Sing-box Kernel ${{ inputs.singbox_version }}
             - Changelog : [v${{ inputs.singbox_version }}](https://github.com/SagerNet/sing-box/releases/tag/v${{ inputs.singbox_version }})
             - Wiki : [sing-box.sagernet.org](https://sing-box.sagernet.org)
-            
+
             ### Dependency Requirement
             - ` ca-bundle, ip-full, kmod-tun `
+            
