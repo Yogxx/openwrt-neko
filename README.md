@@ -74,5 +74,5 @@ Screenshoot
 </details>
 
 <details><summary>Settings</summary>
-  <img src="https://raw.githubusercontent.com/yogxx/openwrt-neko/refs/heads/dev/img/setting.png" alt="setting">
+  <img src="https://raw.githubusercontent.com/yogxx/openwrt-neko/refs/heads/dev/img/settings.png" alt="setting">
 </details>
