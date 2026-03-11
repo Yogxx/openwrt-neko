@@ -23,6 +23,8 @@ jobs:
       contents: write
     name: Build Neko
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     strategy:
       fail-fast: false
       matrix:
@@ -34,14 +36,13 @@ jobs:
           - aarch64_cortex-a53
           - aarch64_cortex-a72
           - aarch64_generic
+          - arm_cortex-a9
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
           ref: main
-        env:
-          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
       - name: Preparing Neko
         run: |
