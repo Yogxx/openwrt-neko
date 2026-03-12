@@ -1,5 +1,5 @@
 config neko 'cfg'
-    option enabled '0'
+    option enabled '1'
     option core_mode 'mihomo'
     option tcp_mode 'redirect'
     option udp_mode 'tun'
