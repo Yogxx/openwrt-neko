@@ -13,7 +13,7 @@ uci commit uhttpd
 # Setup UCI default neko jika belum ada
 uci -q get neko.cfg > /dev/null 2>&1 || {
     uci set neko.cfg=neko
-    uci set neko.cfg.enabled='0'
+    uci set neko.cfg.enabled='1'
     uci set neko.cfg.core_mode='mihomo'
     uci set neko.cfg.tcp_mode='redirect'
     uci set neko.cfg.udp_mode='tun'
