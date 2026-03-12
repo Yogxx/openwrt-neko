@@ -27,7 +27,6 @@ if(isset($_POST['core_mode'])){
 
         if(in_array($dt, $allowed)){
             shell_exec("uci set neko.cfg.core_mode='$dt' && uci commit neko");
-            // Reset selected_config ke file pertama yang ditemukan sesuai core
             $cfg_dir = '/etc/neko/config';
             $ext     = ($dt === 'singbox') ? '*.json' : '*.yaml';
             $files   = glob("$cfg_dir/$ext") ?: [];
@@ -49,31 +48,19 @@ if(isset($_POST['show_luci'])){
     shell_exec("uci set neko.cfg.show_luci='".intval($_POST['show_luci'])."' && uci commit neko");
 }
 
-// Patch config mihomo/singbox sesuai mode yang dipilih
 function patch_mihomo_config($config_file, $tcp_mode, $udp_mode) {
     if (!file_exists($config_file)) return;
 
-    // Ikuti pendekatan nikki:
-    // - auto-redirect, auto-route, auto-detect-interface selalu FALSE
-    // - routing dihandle oleh nftables kita
-    // - tun.enable=true HANYA jika tcp=tun atau udp=tun (bukan redirect)
-    // - redir-port aktif hanya jika tcp=redirect
-
     $need_tun        = ($tcp_mode === 'tun' || $udp_mode === 'tun');
     $need_redir_port = ($tcp_mode === 'redirect');
-
     $f = escapeshellarg($config_file);
 
-    // tun.enable: true hanya jika TCP atau UDP pakai TUN
     $tun_enable = $need_tun ? 'true' : 'false';
     shell_exec("sed -i '/^tun:/,/^[a-z]/{s/^  enable: .*/  enable: $tun_enable/}' $f");
-
-    // auto-redirect dan auto-route selalu false — kita yang handle via nftables
     shell_exec("sed -i '/^tun:/,/^[a-z]/{s/^  auto-redirect: .*/  auto-redirect: false/}' $f");
     shell_exec("sed -i '/^tun:/,/^[a-z]/{s/^  auto-route: .*/  auto-route: false/}' $f");
     shell_exec("sed -i '/^tun:/,/^[a-z]/{s/^  auto-detect-interface: .*/  auto-detect-interface: false/}' $f");
 
-    // redir-port: aktif hanya untuk tcp=redirect
     if ($need_redir_port) {
         shell_exec("sed -i 's/^#redir-port:/redir-port:/' $f");
     } else {
@@ -134,7 +121,6 @@ function patch_singbox_config($config_file, $tcp_mode, $udp_mode) {
     file_put_contents($config_file, json_encode($json, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 }
 
-    // Patch config sesuai core
     if(!empty($selected_config) && file_exists($selected_config)){
         $ext = strtolower(pathinfo($selected_config, PATHINFO_EXTENSION));
         if($core_mode === 'mihomo' && $ext === 'yaml') {
