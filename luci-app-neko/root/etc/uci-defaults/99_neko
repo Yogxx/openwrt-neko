@@ -25,14 +25,4 @@ uci -q get neko.cfg > /dev/null 2>&1 || {
     uci commit neko
 }
 
-# Restore backup jika ada
-if [ -f "/tmp/neko/neko.bak" ]; then
-    echo "[ $(date +%T) ] - Neko: restoring old config..."
-    [ -f "/tmp/neko/cache.db" ] && cp -f "/tmp/neko/cache.db" "/etc/neko/cache.db"
-    [ "$(ls -A /tmp/neko/config/ 2>/dev/null)" ]        && cp -rf /tmp/neko/config/* "/etc/neko/config/"
-    [ "$(ls -A /tmp/neko/proxy_provider/ 2>/dev/null)" ] && cp -rf /tmp/neko/proxy_provider/* "/etc/neko/proxy_provider/"
-    [ "$(ls -A /tmp/neko/rule_provider/ 2>/dev/null)" ]  && cp -rf /tmp/neko/rule_provider/* "/etc/neko/rule_provider/"
-    echo "[ $(date +%T) ] - Neko: restore complete"
-fi
-
 echo "[ $(date +%T) ] - Neko: uci-defaults done"
