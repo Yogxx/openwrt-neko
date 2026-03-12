@@ -15,9 +15,11 @@
 
 Features
 ---
-- your Own Custom Theme based Bootstrap ` nekoclash/assets/theme `
+- Transparent Proxy (Redirect/TPROXY/TUN)
+- Dual mode, can use mihomo or singbox core
+- Backup & Restore configuration
 - Configs, Proxy, and Rules can edit on webui
-- xray/v2ray config converter
+- Xray/V2ray config converter
 
 Prerequisites
 ---
@@ -28,7 +30,7 @@ Packages list
 ---
 | Packages | Version | Information |
 |---|---|---|
-| luci-app-neko | <div align="center"> [ ` 1.3.0 ` ](https://github.com/Yogxx/openwrt-neko/releases) </div> | Include `config simple rules` files |
+| luci-app-neko | <div align="center"> [ ` 1.3.1 ` ](https://github.com/Yogxx/openwrt-neko/releases) </div> | Include `config simple rules` files |
 | mihomo | <div align="center"> [ ` 1.19.21 ` ](https://github.com/Yogxx/openwrt-neko/releases/tag/core_1.19.21_1.12.24)</div> | Latest stable version on [MetaCubeX](https://github.com/MetaCubeX/mihomo/releases) |
 | sing-box | <div align="center"> [ ` 1.12.24 ` ](https://github.com/Yogxx/openwrt-neko/releases/tag/core_1.19.21_1.12.24) </div> | Original [Repository](https://github.com/SagerNet/sing-box/releases) |
 
