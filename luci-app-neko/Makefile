@@ -4,8 +4,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-neko
-PKG_VERSION:=1.3.0
-PKG_RELEASE:=10
+PKG_VERSION:=1.3.1
+PKG_RELEASE:=1
 PKG_LICENSE:=MIT
 PKG_MAINTAINER:=nosignal <https://github.com/nosignals/openwrt-neko>
 
@@ -25,11 +25,17 @@ define Package/$(PKG_NAME)/install
 	if [ -d $(CURDIR)/root ]; then \
 		$(CP) $(CURDIR)/root/* $(1)/; \
 	fi
+endef
 
-	if [ -d $(CURDIR)/www ]; then \
-		$(INSTALL_DIR) $(1)/www; \
-		$(CP) $(CURDIR)/www/* $(1)/www/; \
-	fi
+define Package/$(PKG_NAME)/prerm
+#!/bin/sh
+mkdir -p /tmp/neko
+touch /tmp/neko/neko.bak
+[ -d /etc/neko/config ]         && cp -rf /etc/neko/config /tmp/neko/
+[ -d /etc/neko/proxy_provider ] && cp -rf /etc/neko/proxy_provider /tmp/neko/
+[ -d /etc/neko/rule_provider ]  && cp -rf /etc/neko/rule_provider /tmp/neko/
+[ -f /etc/neko/cache.db ]       && cp -f /etc/neko/cache.db /tmp/neko/
+exit 0
 endef
 
 define Package/$(PKG_NAME)/postrm
