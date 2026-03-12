@@ -52,7 +52,7 @@ apk add --allow-untrusted luci-app-neko*.apk
 ```
 Updating
 ---
-- `-`
+- `⬆`
 
 About
 ---
