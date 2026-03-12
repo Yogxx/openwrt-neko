@@ -14,7 +14,7 @@ DNS_PORT=1053
 TPROXY_MARK=0x01
 TPROXY_TABLE=100
 
-# TUN mark/table (harus berbeda dari TPROXY)
+# TUN mark/table
 TUN_MARK=0x81
 TUN_MASK=0xff
 TUN_TABLE=101
