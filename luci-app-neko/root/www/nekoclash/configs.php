@@ -12,14 +12,11 @@ if ($core_mode === 'singbox') {
 
 $ruleDirPath = "$neko_dir/rule_provider";
 
-// FIX: $arrPath didefinisikan untuk dropdown upload
 $arrPath = [
     $neko_dir . "/config",
     $neko_dir . "/proxy_provider",
     $neko_dir . "/rule_provider",
 ];
-
-// FIX: $core_mode sudah ada dari cfg.php, tidak perlu di-declare ulang
 
 // Save config
 if (isset($_POST['config_content']) && isset($_POST['save_config'])) {
@@ -28,7 +25,6 @@ if (isset($_POST['config_content']) && isset($_POST['save_config'])) {
     }
 }
 
-// FIX: gabungkan semua handler action dalam satu blok if
 if (isset($_POST['action'])) {
     $action_type = $_POST['action'];
 
@@ -92,14 +88,12 @@ if (isset($_POST['action'])) {
 if (isset($_POST['clashconfig'])) {
     $dt = $_POST['clashconfig'];
     shell_exec("uci set neko.cfg.selected_config='$dt' && uci commit neko");
-    // PRG: redirect setelah POST agar browser tidak cache
     header('Location: configs.php');
     exit;
 }
 
 if (isset($_POST['neko'])) {
     if ($_POST['neko'] == 'apply') {
-        // Juga simpan clashconfig jika ada
         if (isset($_POST['clashconfig'])) {
             $dt = $_POST['clashconfig'];
             shell_exec("uci set neko.cfg.selected_config='$dt' && uci commit neko");
@@ -110,9 +104,6 @@ if (isset($_POST['neko'])) {
         exit;
     }
 }
-
-// FIX: hapus kode rules lama yang pakai shell_exec + tmpfile
-// sudah digantikan oleh fetch API (load_rules / save_rules di atas)
 
 if (isset($_POST["path_selector"])) {
     $action = $_POST['path_selector'];
@@ -138,7 +129,6 @@ if (isset($_POST["path_selector"])) {
         exit;
     }
 
-    // Upload file ke direktori yang dipilih
     ob_clean();
     up_controller($action, $allowed_dirs);
     exit;
@@ -150,12 +140,10 @@ if (isset($_POST["file_action"])) {
     $command    = $parts[0] ?? '';
 
     if ($command === 'down') {
-        // FIX: tambah $allowed_dirs
         action_controller($action_str, $allowed_dirs);
         exit;
     }
 
-    // FIX: tambah $allowed_dirs
     $result = action_controller($action_str, $allowed_dirs);
     header('Content-Type: application/json');
     echo json_encode($result);
@@ -662,7 +650,6 @@ document.getElementById('saveRules').addEventListener('click', function(e) {
     });
 });
 
-// FIX: hapus duplikat convertButton listener, cukup pakai fungsi convertUrl()
 function convertUrl() {
     var url = document.getElementById('urlInput').value;
     fetch('yamlconv.php', {
