@@ -1,28 +1,38 @@
-#!/bin/bash
+#!/bin/sh
 #
 # Copyright (C) 2024 nosignal
 
-neko_dir="/etc/neko"
-tmp_dir="/tmp"
+echo "[ $(date +%T) ] - Neko: uci-defaults starting..."
 
-echo "[ `date +%T` ] - Checking Files..."
+# Setup uhttpd untuk PHP — selalu dijalankan
+uci set uhttpd.main.index_page='index.php'
+uci set uhttpd.main.interpreter='.php=/usr/bin/php-cgi'
+uci commit uhttpd
+/etc/init.d/uhttpd restart
 
-files_check() {
-    uci set uhttpd.main.index_page='index.php'
-    uci set uhttpd.main.interpreter='.php=/usr/bin/php-cgi'
-    uci commit uhttpd
-
-    /etc/init.d/uhttpd restart
+# Setup UCI default neko jika belum ada
+uci -q get neko.cfg > /dev/null 2>&1 || {
+    uci set neko.cfg=neko
+    uci set neko.cfg.enabled='0'
+    uci set neko.cfg.core_mode='mihomo'
+    uci set neko.cfg.tcp_mode='redirect'
+    uci set neko.cfg.udp_mode='tun'
+    uci set neko.cfg.selected_config='/etc/neko/config/config.yaml'
+    uci set neko.cfg.delay='2'
+    uci set neko.cfg.show_ip='1'
+    uci set neko.cfg.show_isp='1'
+    uci set neko.cfg.show_luci='1'
+    uci commit neko
 }
 
+# Restore backup jika ada
 if [ -f "/tmp/neko/neko.bak" ]; then
-    echo "[ `date +%T` ] - Old Configs Detected. Restoring..."
-    
-    [ -f "/tmp/neko/cache.db" ] && cp -rf "/tmp/neko/cache.db" "/etc/neko/cache.db"
-    cp -rf /tmp/neko/config/* "/etc/neko/config/"
-    cp -rf /tmp/neko/proxy_provider/* "/etc/neko/proxy_provider/"
-    cp -rf /tmp/neko/rule_provider/* "/etc/neko/rule_provider/"
-else
-    echo "[ `date +%T` ] - No Old Files. Checking Files..."
-    files_check
+    echo "[ $(date +%T) ] - Neko: restoring old config..."
+    [ -f "/tmp/neko/cache.db" ] && cp -f "/tmp/neko/cache.db" "/etc/neko/cache.db"
+    [ "$(ls -A /tmp/neko/config/ 2>/dev/null)" ]        && cp -rf /tmp/neko/config/* "/etc/neko/config/"
+    [ "$(ls -A /tmp/neko/proxy_provider/ 2>/dev/null)" ] && cp -rf /tmp/neko/proxy_provider/* "/etc/neko/proxy_provider/"
+    [ "$(ls -A /tmp/neko/rule_provider/ 2>/dev/null)" ]  && cp -rf /tmp/neko/rule_provider/* "/etc/neko/rule_provider/"
+    echo "[ $(date +%T) ] - Neko: restore complete"
 fi
+
+echo "[ $(date +%T) ] - Neko: uci-defaults done"
