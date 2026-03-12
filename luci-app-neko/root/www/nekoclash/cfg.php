@@ -19,8 +19,6 @@ $neko_cfg = [
 ];
 
 if (!empty($selected_config) && file_exists($selected_config)) {
-    // Parse berdasarkan core_mode, bukan ekstensi file
-    // Mencegah bug saat ganti core tapi selected_config belum diupdate
 
     if ($core_mode === 'singbox') {
         // ── Sing-box JSON ──────────────────────────────────────────
