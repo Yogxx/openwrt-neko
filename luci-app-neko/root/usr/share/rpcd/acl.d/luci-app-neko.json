@@ -1,17 +1,23 @@
 {
-	"luci-app-neko": {
-		"description": "Grant access to Neko service",
-		"read": {
-			"ubus": {
-				"service": [ "list" ]
-			},
-			"uci": [ "neko" ]
-		},
-		"write": {
-			"ubus": {
-				"service": [ "start", "stop", "restart", "reload", "enable", "disable" ]
-			},
-			"uci": [ "neko" ]
-		}
-	}
+    "luci-app-neko": {
+        "description": "Grant access to Neko service",
+        "read": {
+            "ubus": {
+                "service": [ "list" ]
+            },
+            "uci": [ "neko" ],
+            "file": {
+                "/etc/init.d/neko": [ "exec" ]
+            }
+        },
+        "write": {
+            "ubus": {
+                "service": [ "start", "stop", "restart", "reload", "enable", "disable" ]
+            },
+            "uci": [ "neko" ],
+            "file": {
+                "/etc/init.d/neko": [ "exec" ]
+            }
+        }
+    }
 }
