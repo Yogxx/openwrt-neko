@@ -8,11 +8,13 @@ STOP=10
 TPROXY_PORT=7893
 REDIR_PORT=7892
 
+DNS_PORT=1053
+
 # TPROXY mark/table
 TPROXY_MARK=0x01
 TPROXY_TABLE=100
 
-# TUN mark/table
+# TUN mark/table (harus berbeda dari TPROXY)
 TUN_MARK=0x81
 TUN_MASK=0xff
 TUN_TABLE=101
@@ -30,13 +32,13 @@ start_service() {
     core=$(uci -q get neko.cfg.core_mode)
     [ -n "$core" ] || core="mihomo"
 
+    selected=$(uci -q get neko.cfg.selected_config)
     if [ "$core" = "singbox" ]; then
-        config="/etc/neko/config/config.json"
+        config="${selected:-/etc/neko/config/config.json}"
         binary="/usr/bin/sing-box"
         cmd="run -c $config"
     else
-        config=$(uci -q get neko.cfg.selected_config)
-        [ -n "$config" ] || config="/etc/neko/config/config.yaml"
+        config="${selected:-/etc/neko/config/config.yaml}"
         binary="/usr/bin/mihomo"
         cmd="-d /etc/neko -f $config"
     fi
@@ -61,6 +63,7 @@ service_started() {
 }
 
 stop_service() {
+    # procd akan kill process, kita cleanup firewall
     remove_firewall_rule
 }
 
@@ -90,14 +93,9 @@ wait_tun_interface() {
     return 1
 }
 
-# ─── TUN (fw4 rule Meta interface) ───────────────────
-
-# TUN routing
-TUN_TABLE=101
-TUN_MASK=0xff
+# ─── TUN (fw4 rule untuk Meta interface) ───────────────────
 
 setup_tun_base() {
-    # setup ip rule, ip route, nftables, fw4 zone
     wait_tun_interface || {
         logger "NEKO: Meta interface not found, skip TUN setup"
         return 1
@@ -107,7 +105,6 @@ setup_tun_base() {
     ip route add default dev Meta table $TUN_TABLE 2>/dev/null
     ip rule add iif Meta lookup main priority 900 2>/dev/null
 
-    # nftables prerouting chain
     nft add table inet neko_tun 2>/dev/null
     nft add chain inet neko_tun prerouting \
         '{ type filter hook prerouting priority mangle; policy accept; }' 2>/dev/null
@@ -118,7 +115,6 @@ setup_tun_base() {
     nft add rule inet neko_tun prerouting \
         iif "Meta" return 2>/dev/null
 
-    # fw4 zone + forwarding
     uci -q delete firewall.neko_proxy_zone
     uci set firewall.neko_proxy_zone="zone"
     uci set firewall.neko_proxy_zone.name="neko_proxy"
@@ -196,6 +192,24 @@ remove_redirect_table() {
     logger "NEKO: REDIRECT rules removed"
 }
 
+# ─── DNS REDIRECT (port 53 → core DNS port) ─────────────────
+
+add_dns_redirect() {
+    nft add table inet neko_dns 2>/dev/null
+    nft add chain inet neko_dns prerouting \
+        '{ type nat hook prerouting priority dstnat; policy accept; }' 2>/dev/null
+    nft add rule inet neko_dns prerouting \
+        iifname "br-lan" udp dport 53 redirect to :$DNS_PORT 2>/dev/null
+    nft add rule inet neko_dns prerouting \
+        iifname "br-lan" tcp dport 53 redirect to :$DNS_PORT 2>/dev/null
+    logger "NEKO: DNS redirect rules added (53 -> $DNS_PORT)"
+}
+
+remove_dns_redirect() {
+    nft delete table inet neko_dns 2>/dev/null
+    logger "NEKO: DNS redirect rules removed"
+}
+
 # ─── TPROXY (nftables mangle) ──────────────────────────────
 
 setup_tproxy_table() {
@@ -242,6 +256,7 @@ add_firewall_rule() {
     tcp_mode=$(get_tcp_mode)
     udp_mode=$(get_udp_mode)
     logger "NEKO: applying rules tcp=$tcp_mode udp=$udp_mode"
+    add_dns_redirect
 
     case "$tcp_mode" in
         redirect) add_redirect_tcp ;;
@@ -260,9 +275,9 @@ add_firewall_rule() {
 }
 
 remove_firewall_rule() {
-    remove_tun_fw_rule "neko_tun_tcp"
-    remove_tun_fw_rule "neko_tun_udp"
+    remove_tun_fw_rule
     remove_redirect_table
     remove_tproxy_table
+    remove_dns_redirect
     logger "NEKO: all firewall rules removed"
 }
