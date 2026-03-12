@@ -306,7 +306,7 @@ $show_luci    = trim(shell_exec("uci -q get neko.cfg.show_luci"));
         <div class="card-body">
             <div class="text-center">
                 <h5 class="mb-3">NekoClash</h5>
-                <p>NekoClash is a family friendly Clash Proxy tool, this tool makes it easy for users to use Clash Proxy, and User can modify your own Theme based Bootstrap, inspired by OpenClash Tools. NekoClash has writen by PHP, and BASH.</p>
+                <p>NekoClash is a family friendly Clash Proxy tool, this tool makes it easy for users to use Clash Proxy, inspired by OpenClash Tools. NekoClash has writen by PHP.</p>
                 <p>This tool aims to make it easier to use Clash Proxy</p>
                 <p>If you have questions or feedback about NekoClash you can contact me on the <span class="badge bg-indigo"><b>DBAI Discord Server</b></span> link below</p>
 
