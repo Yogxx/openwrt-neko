@@ -55,7 +55,8 @@ start_service() {
 }
 
 service_started() {
-    sleep 2
+    delay=$(uci -q get neko.cfg.delay)
+    sleep "${delay:-2}"
     add_firewall_rule
 }
 
