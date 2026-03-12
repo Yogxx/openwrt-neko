@@ -1,1 +1,0 @@
-/etc/neko/config/config.yaml
