@@ -4,13 +4,11 @@
 
 echo "[ $(date +%T) ] - Neko: uci-defaults starting..."
 
-# Setup uhttpd untuk PHP — selalu dijalankan
 uci set uhttpd.main.index_page='index.php'
 uci set uhttpd.main.interpreter='.php=/usr/bin/php-cgi'
 uci commit uhttpd
 /etc/init.d/uhttpd restart
 
-# Setup UCI default neko jika belum ada
 uci -q get neko.cfg > /dev/null 2>&1 || {
     uci set neko.cfg=neko
     uci set neko.cfg.enabled='1'
