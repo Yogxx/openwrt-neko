@@ -29,9 +29,10 @@ jobs:
     - name: Extract Version
       id: get_version
       run: |
-        VERSION=$(grep PKG_VERSION luci-app-neko/Makefile | sed 's/.*:=//')
-        RELEASE=$(grep PKG_RELEASE luci-app-neko/Makefile | sed 's/.*:=//')
-        FULL_VERSION=${VERSION}-r${RELEASE}
+        # FIX: pakai ^PKG_ agar tidak match PKG_VERSION_something
+        VERSION=$(grep "^PKG_VERSION" luci-app-neko/Makefile | sed 's/.*:=//' | tr -d '[:space:]')
+        RELEASE=$(grep "^PKG_RELEASE" luci-app-neko/Makefile | sed 's/.*:=//' | tr -d '[:space:]')
+        FULL_VERSION="${VERSION}-r${RELEASE}"
         echo "version=$FULL_VERSION" >> $GITHUB_OUTPUT
         echo "Detected version: $FULL_VERSION"
 
@@ -49,9 +50,10 @@ jobs:
         FILE=$(basename "$URL")
 
         wget -q --show-progress "$URL"
-        tar --use-compress-program=unzstd -xf "$FILE"
 
-        DIR=$(tar -tf "$FILE" | head -n1 | cut -d/ -f1)
+        # FIX: pakai --use-compress-program untuk detect DIR juga
+        DIR=$(tar --use-compress-program=unzstd -tf "$FILE" | head -n1 | cut -d/ -f1)
+        tar --use-compress-program=unzstd -xf "$FILE"
         mv "$DIR" sdk
 
     - name: Cache dl
@@ -74,10 +76,10 @@ jobs:
 
         export GIT_OPTIONAL_LOCKS=0
 
+        # FIX: exit 1 jika semua retry gagal
         for i in 1 2 3; do
-          ./scripts/feeds update -a && break
-          sleep 10
-        done
+          ./scripts/feeds update -a && break || { [ $i -lt 3 ] && sleep 10; }
+        done || exit 1
 
         ./scripts/feeds install -a
         make defconfig
@@ -117,15 +119,18 @@ jobs:
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ env.FINAL_NAME }}
+        name: luci-app-neko_${{ steps.get_version.outputs.version }}_${{ matrix.sdk.type }}
         path: ${{ env.FINAL_NAME }}
 
     - name: Publish Release
       if: startsWith(github.ref, 'refs/tags/')
       uses: softprops/action-gh-release@v2
       with:
-        tag_name: v${{ steps.get_version.outputs.version }}
-        name: luci-app-neko v${{ steps.get_version.outputs.version }}
+        tag_name: ${{ github.ref_name }}
+        name: luci-app-neko ${{ github.ref_name }}
         files: |
           luci-app-neko_${{ steps.get_version.outputs.version }}.apk
           luci-app-neko_${{ steps.get_version.outputs.version }}_all.ipk
+        fail_on_unmatched_files: false
+        generate_release_notes: false
+        
