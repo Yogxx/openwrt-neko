@@ -4,22 +4,17 @@ USE_PROCD=1
 START=95
 STOP=10
 
-# Ports — harus sesuai dengan config mihomo/singbox
 TPROXY_PORT=7893
 REDIR_PORT=7892
-
 DNS_PORT=1053
 
-# TPROXY mark/table
 TPROXY_MARK=0x01
 TPROXY_TABLE=100
 
-# TUN mark/table
 TUN_MARK=0x81
 TUN_MASK=0xff
 TUN_TABLE=101
 
-# Private IP ranges (bypass proxy)
 PRIVATE_RANGES="0.0.0.0/8, 10.0.0.0/8, 127.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/16, 224.0.0.0/3"
 
 start_service() {
@@ -63,15 +58,12 @@ service_started() {
 }
 
 stop_service() {
-    # procd akan kill process, kita cleanup firewall
     remove_firewall_rule
 }
 
 reload_service() {
     restart
 }
-
-# ─── Helper ────────────────────────────────────────────────
 
 get_tcp_mode() {
     mode=$(uci -q get neko.cfg.tcp_mode)
@@ -92,8 +84,6 @@ wait_tun_interface() {
     done
     return 1
 }
-
-# ─── TUN (fw4 rule untuk Meta interface) ───────────────────
 
 setup_tun_base() {
     wait_tun_interface || {
@@ -124,7 +114,6 @@ setup_tun_base() {
     uci set firewall.neko_proxy_zone.masq="1"
     uci set firewall.neko_proxy_zone.mtu_fix="1"
     uci set firewall.neko_proxy_zone.device="Meta"
-
     uci -q delete firewall.neko_proxy_fwd
     uci set firewall.neko_proxy_fwd="forwarding"
     uci set firewall.neko_proxy_fwd.src="lan"
@@ -170,8 +159,6 @@ remove_tun_fw_rule() {
     logger "NEKO: TUN rules removed"
 }
 
-# ─── REDIRECT (nftables NAT) ────────────────────────────────
-
 setup_redirect_table() {
     nft add table inet neko_redirect 2>/dev/null
     nft add chain inet neko_redirect prerouting \
@@ -192,8 +179,6 @@ remove_redirect_table() {
     logger "NEKO: REDIRECT rules removed"
 }
 
-# ─── DNS REDIRECT (port 53 → core DNS port) ─────────────────
-
 add_dns_redirect() {
     nft add table inet neko_dns 2>/dev/null
     nft add chain inet neko_dns prerouting \
@@ -209,8 +194,6 @@ remove_dns_redirect() {
     nft delete table inet neko_dns 2>/dev/null
     logger "NEKO: DNS redirect rules removed"
 }
-
-# ─── TPROXY (nftables mangle) ──────────────────────────────
 
 setup_tproxy_table() {
     ip rule add fwmark $TPROXY_MARK table $TPROXY_TABLE 2>/dev/null
@@ -249,8 +232,6 @@ remove_tproxy_table() {
     ip route del local default dev lo table $TPROXY_TABLE 2>/dev/null
     logger "NEKO: TPROXY rules removed"
 }
-
-# ─── Main: apply berdasarkan tcp_mode + udp_mode ───────────
 
 add_firewall_rule() {
     tcp_mode=$(get_tcp_mode)
