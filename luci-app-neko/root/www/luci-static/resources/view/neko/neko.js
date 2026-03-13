@@ -67,7 +67,6 @@ return view.extend({
         var isRunning   = false;
         var serviceData = data[1];
 
-        // FIX: loop semua instance — tidak hardcode instance1/instance2
         if (serviceData && serviceData.neko && serviceData.neko.instances) {
             var instances = serviceData.neko.instances;
             for (var key in instances) {
