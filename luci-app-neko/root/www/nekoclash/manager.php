@@ -44,7 +44,8 @@ function create_table($path) {
         $output .= "<form action=\"configs.php\" method=\"post\">\n";
         $output .= "<div class=\"btn-group\" role=\"group\">\n";
         $output .= "<button type=\"submit\" name=\"file_action\" value=\"down@".$file."\" class=\"btn btn-info d-grid\"><i class=\"fa fa-download\"></i> Download</button>\n";
-        $output .= "<button type=\"button\" class=\"btn btn-primary d-grid\" data-bs-toggle=\"modal\" data-bs-target=\"#".$file_dir."_".$file_name[0]."\"><i class=\"fa fa-gear\"></i> Option</button>\n";
+        $file_id = str_replace('.', '_', basename($file));
+        $output .= "<button type=\"button\" class=\"btn btn-primary d-grid\" data-bs-toggle=\"modal\" data-bs-target=\"#".$file_dir."_".$file_id."\"><i class=\"fa fa-gear\"></i> Option</button>\n";
         $output .= "</div>\n</form>\n</td>\n</tr>\n";
     }
 
@@ -59,7 +60,8 @@ function create_modal($path) {
         $file_dir  = basename(dirname($file));
         $file_name = explode(".", basename($file));
 
-        $output .= "<div class=\"modal fade\" id=\"".$file_dir."_".$file_name[0]."\" tabindex=\"-1\">\n";
+        $file_id = str_replace('.', '_', basename($file));
+        $output .= "<div class=\"modal fade\" id=\"".$file_dir."_".$file_id."\" tabindex=\"-1\">\n";
         $output .= "<div class=\"modal-dialog modal-xl modal-fullscreen-md-down\">\n";
         $output .= "<div class=\"modal-content\">\n";
         $output .= "<div class=\"modal-header\">\n";
@@ -67,13 +69,13 @@ function create_modal($path) {
         $output .= "<button type=\"button\" class=\"btn-close\" data-bs-dismiss=\"modal\"></button>\n";
         $output .= "</div>\n";
         $output .= "<div class=\"modal-body\">\n";
-        $output .= "<textarea id=\"content_".$file_dir."_".$file_name[0]."\" class=\"form-control\" rows=\"15\">"
+        $output .= "<textarea id=\"content_".$file_dir."_".$file_id."\" class=\"form-control\" rows=\"15\">"
             .htmlspecialchars(file_get_contents($file)).
             "</textarea>\n</div>\n";
 
         $output .= "<div class=\"modal-footer\">\n";
         $output .= "<button type=\"button\" class=\"btn btn-danger\" onclick=\"deleteFile('".$file."')\">Delete</button>\n";
-        $output .= "<button type=\"button\" class=\"btn btn-success\" onclick=\"saveFile('".$file."', 'content_".$file_dir."_".$file_name[0]."')\">Save</button>\n";
+        $output .= "<button type=\"button\" class=\"btn btn-success\" onclick=\"saveFile('".$file."', 'content_".$file_dir."_".$file_id."')\">Save</button>\n";
         $output .= "<button type=\"button\" class=\"btn btn-info\" onclick=\"downloadFile('".$file."')\">Download</button>\n";
         $output .= "<button type=\"button\" class=\"btn btn-secondary\" data-bs-dismiss=\"modal\">Close</button>\n";
         $output .= "</div>\n</div>\n</div>\n</div>\n";
