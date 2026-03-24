@@ -2,58 +2,88 @@
 'require view';
 
 return view.extend({
+    handleSaveApply: null,
+    handleSave: null,
+    handleReset: null,
+
     tinyFmUrls: [
-        '/tinyfilemanager/tinyfilemanager.php?p=etc%2Fneko',
-        '/tinyfilemanager/index.php?p=etc%2Fneko',
         '/tinyfm/tinyfm.php?p=etc%2Fneko',
-        '/tinyfm/index.php?p=etc%2Fneko'
+        '/tinyfm/TinyFM.php?p=etc%2Fneko',
+        '/tinyfm/index.php?p=etc%2Fneko',
+        '/tinyfilemanager/tinyfilemanager.php?p=etc%2Fneko',
+        '/tinyfilemanager/index.php?p=etc%2Fneko'
     ],
 
-    findValidUrl: async function() {
+    async load() {
         for (const url of this.tinyFmUrls) {
             try {
-                const cacheBuster = '&_=' + Date.now();
-                const res = await fetch(url + cacheBuster, {
-                    method: 'HEAD',
+                const res = await fetch(url + '&_=' + Date.now(), {
+                    method: 'GET',
                     cache: 'no-store',
                     credentials: 'same-origin'
                 });
+                res.body?.cancel?.();
                 if (res.ok) return url;
             } catch (_) {}
         }
         return null;
     },
 
-    load: function() {
-        return this.findValidUrl();
-    },
+    render(iframePath) {
+        if (!iframePath) {
+            const msg = E('div', {
+                style: 'padding:20px;border:1px solid #ccc;border-radius:8px;color:#c00;line-height:1.6;'
+            });
 
-    render: function(iframePath) {
-        if (iframePath) {
-            const fullUrl = window.location.origin + iframePath;
-            return this.renderIframe(fullUrl);
+            msg.appendChild(document.createTextNode(
+                _('TinyFileManager not found. Please install luci-app-tinyfm. ')
+            ));
+
+            msg.appendChild(E('a', {
+                href: 'https://github.com/Yogxx/tinyfm-snapshot',
+                target: '_blank',
+                rel: 'noopener noreferrer',
+                style: 'margin-left:4px;font-weight:bold;'
+            }, _('Download package')));
+
+            return E('div', { class: 'cbi-section' }, msg);
         }
-        return E('div', { class: 'cbi-section' }, [
-            E('div', {
-                style: 'color: red; padding: 20px; border: 1px solid #ccc; border-radius: 8px;'
-            }, _('TinyFileManager not found. Please install it to use the Advanced Editor.'))
-        ]);
-    },
 
-    renderIframe: function(url) {
-        return E('div', { class: 'cbi-section' }, [
-            E('iframe', {
-                src: url,
-                style: 'width: 100%; height: 80vh; border: none;',
-                onerror: function(e) {
-                    const iframe = e.target;
-                    iframe.style.display = 'none';
-                    const div = document.createElement('div');
-                    div.style.cssText = 'color: red; padding: 20px;';
-                    div.textContent = 'Failed to load TinyFileManager.';
-                    iframe.parentNode.appendChild(div);
-                }
-            }, _('Your browser does not support iframes.'))
-        ]);
+        const wrapper = E('div', { class: 'cbi-section' });
+        const loading = E('div', { style: 'padding:20px;color:#888;' },
+            _('Loading TinyFileManager...')
+        );
+        const iframe = E('iframe', {
+            src: iframePath + '&_=' + Date.now(),
+            style: 'width:100%;height:80vh;border:none;display:block;'
+        });
+
+        let failed = false;
+
+        const showError = () => {
+            if (failed) return;
+            failed = true;
+            if (loading.parentNode) loading.remove();
+            if (iframe.parentNode)  iframe.remove();
+            wrapper.appendChild(E('div', {
+                style: 'color:red;padding:20px;border:1px solid #ccc;border-radius:8px;'
+            }, _('Failed to load TinyFileManager.')));
+        };
+
+        iframe.addEventListener('load', () => {
+            if (loading.parentNode) loading.remove();
+            try {
+                const doc = iframe.contentDocument;
+                if (doc && doc.body && !doc.body.innerText.trim())
+                    showError();
+            } catch (_) {}
+        });
+
+        iframe.addEventListener('error', showError);
+
+        wrapper.appendChild(loading);
+        wrapper.appendChild(iframe);
+
+        return wrapper;
     }
 });
