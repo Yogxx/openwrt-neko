@@ -158,8 +158,8 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/') || inputs.publish_release == true
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: luci-app-neko ${{ github.ref_name }}
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v{0}', steps.get_version.outputs.version) }}
+          name: luci-app-neko v${{ steps.get_version.outputs.version }}
           files: |
             luci-app-neko-${{ steps.get_version.outputs.version }}.apk
             luci-app-neko_${{ steps.get_version.outputs.version }}_all.ipk
