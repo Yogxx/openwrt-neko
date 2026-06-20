@@ -49,12 +49,43 @@ jobs:
             gcc-multilib g++-multilib gettext git \
             libncurses-dev libssl-dev python3-distutils \
             rsync unzip zlib1g-dev file wget curl xz-utils zstd
-
       - name: Download SDK
         run: |
           URL="${{ matrix.sdk.url }}"
           FILE=$(basename "$URL")
-          wget -q --show-progress "$URL"
+          BASE_URL=$(dirname "$URL")
+
+          # Download dengan retry, hapus file lama tiap percobaan
+          for i in 1 2 3 4 5; do
+            echo "Attempt $i: downloading $FILE"
+            rm -f "$FILE"
+            wget -q --show-progress --tries=3 --timeout=30 "$URL" && break
+            if [ $i -eq 5 ]; then
+              echo "ERROR: gagal download SDK setelah 5x percobaan"
+              exit 1
+            fi
+            sleep 10
+          done
+
+          # Verify checksum kalau sha256sums tersedia
+          if wget -q -O sha256sums "$BASE_URL/sha256sums"; then
+            EXPECTED=$(grep " \*\?$FILE\$" sha256sums | awk '{print $1}')
+            ACTUAL=$(sha256sum "$FILE" | awk '{print $1}')
+            if [ -n "$EXPECTED" ] && [ "$EXPECTED" != "$ACTUAL" ]; then
+              echo "ERROR: checksum mismatch! expected=$EXPECTED actual=$ACTUAL"
+              exit 1
+            fi
+            echo "Checksum OK"
+          else
+            echo "WARNING: sha256sums tidak ditemukan, skip verifikasi"
+          fi
+
+          # Validasi archive sebelum extract
+          if ! tar --use-compress-program=unzstd -tf "$FILE" > /dev/null 2>&1; then
+            echo "ERROR: archive corrupt"
+            exit 1
+          fi
+
           DIR=$(tar --use-compress-program=unzstd -tf "$FILE" | head -n1 | cut -d/ -f1)
           tar --use-compress-program=unzstd -xf "$FILE"
           mv "$DIR" sdk
