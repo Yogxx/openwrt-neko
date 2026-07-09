@@ -1,4 +1,4 @@
-name: Build luci-app-neko (Dual SDK)
+name: Build luci-app-neko (Dual)
 
 permissions:
   contents: write
