@@ -15,26 +15,11 @@ LUCI_PKGARCH:=all
 
 include $(TOPDIR)/feeds/luci/luci.mk
 
-define Package/$(PKG_NAME)/description
- LuCI support for Mihomo core.
-endef
-
-define Package/$(PKG_NAME)/install
-	$(INSTALL_DIR) $(1)
-
-	if [ -d $(CURDIR)/root ]; then \
-		$(CP) $(CURDIR)/root/* $(1)/; \
-	fi
-endef
-
+# Script postrm disederhanakan hanya untuk membersihkan file cache/runtime
 define Package/$(PKG_NAME)/postrm
 #!/bin/sh
 rm -rf /etc/neko 2>/dev/null || true
-rm -rf /etc/config/neko 2>/dev/null || true
-rm -rf /www/luci-static/resources/view/neko 2>/dev/null || true
 rm -rf /www/nekoclash 2>/dev/null || true
 rm -rf /tmp/.uci/neko 2>/dev/null || true
 exit 0
 endef
-
-$(eval $(call BuildPackage,$(PKG_NAME)))
