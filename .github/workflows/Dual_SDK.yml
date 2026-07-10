@@ -27,9 +27,9 @@ jobs:
     strategy:
       matrix:
         sdk:
-          - url: "https://downloads.openwrt.org/releases/25.12.5/targets/x86/64/openwrt-sdk-25.12.5-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst"
+          - url: "https://downloads.immortalwrt.org/releases/25.12.1/targets/x86/64/immortalwrt-sdk-25.12.1-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst"
             type: "apk"
-          - url: "https://downloads.openwrt.org/releases/24.10.7/targets/x86/64/openwrt-sdk-24.10.7-x86-64_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
+          - url: "https://downloads.immortalwrt.org/releases/24.10.6/targets/x86/64/immortalwrt-sdk-24.10.6-x86-64_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
             type: "ipk"
 
     steps:
