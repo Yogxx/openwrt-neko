@@ -100,6 +100,10 @@ jobs:
 
       - name: Prepare SDK & Copy Package
         run: |
+          # Potong dependensi berat dari Makefile agar UI bisa dikompilasi mandiri dengan cepat
+          sed -i 's/+mihomo//g' luci-app-neko/Makefile
+          sed -i 's/+sing-box//g' luci-app-neko/Makefile
+          
           # 1. COPY PACKAGE TERLEBIH DAHULU KE DALAM SDK
           cp -r luci-app-neko sdk/package/
 
