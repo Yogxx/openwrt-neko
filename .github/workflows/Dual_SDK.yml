@@ -98,9 +98,14 @@ jobs:
           path: sdk/dl
           key: openwrt-dl-${{ matrix.sdk.type }}-${{ runner.os }}
 
-      - name: Prepare SDK
+      - name: Prepare SDK & Copy Package
         run: |
+          # 1. COPY PACKAGE TERLEBIH DAHULU KE DALAM SDK
+          cp -r luci-app-neko sdk/package/
+
           cd sdk
+          
+          # 2. Setup mirror & config git
           sed -i 's|git.openwrt.org/openwrt/openwrt.git|github.com/openwrt/openwrt.git|g' feeds.conf.default
           sed -i 's|git.openwrt.org/project/luci.git|github.com/openwrt/luci.git|g' feeds.conf.default
           sed -i 's|git.openwrt.org/feed/packages.git|github.com/openwrt/packages.git|g' feeds.conf.default
@@ -110,15 +115,15 @@ jobs:
           git config --global http.version HTTP/1.1
           export GIT_OPTIONAL_LOCKS=0
 
+          # 3. Update & Install Feeds
           for i in 1 2 3; do
             ./scripts/feeds update -a && break || { [ $i -lt 3 ] && sleep 10; }
           done || exit 1
 
           ./scripts/feeds install -a
+          
+          # 4. JALANKAN DEFCONFIG DI AKHIR
           make defconfig
-
-      - name: Copy Package
-        run: cp -r luci-app-neko sdk/package/
 
       - name: Compile
         run: |
@@ -163,7 +168,7 @@ jobs:
         with:
           pattern: luci-app-neko_*
           path: release-files
-          merge-multiple: true # Menggabungkan .apk dan .ipk ke dalam satu folder
+          merge-multiple: true
 
       - name: Publish Release
         uses: softprops/action-gh-release@v2
