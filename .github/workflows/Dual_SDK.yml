@@ -19,7 +19,7 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     timeout-minutes: 180
-    
+
     # Mengekspor versi dari step ke level job, agar bisa dibaca oleh job 'release'
     outputs:
       pkg_version: ${{ steps.get_version.outputs.version }}
@@ -53,7 +53,7 @@ jobs:
             gcc-multilib g++-multilib gettext git \
             libncurses-dev libssl-dev python3-distutils \
             rsync unzip zlib1g-dev file wget curl xz-utils zstd
-            
+
       - name: Download SDK
         run: |
           URL="${{ matrix.sdk.url }}"
@@ -103,12 +103,12 @@ jobs:
           # Potong dependensi berat dari Makefile agar UI bisa dikompilasi mandiri dengan cepat
           sed -i 's/+mihomo//g' luci-app-neko/Makefile
           sed -i 's/+sing-box//g' luci-app-neko/Makefile
-          
+
           # 1. COPY PACKAGE TERLEBIH DAHULU KE DALAM SDK
           cp -r luci-app-neko sdk/package/
 
           cd sdk
-          
+
           # 2. Setup mirror & config git
           sed -i 's|git.openwrt.org/openwrt/openwrt.git|github.com/openwrt/openwrt.git|g' feeds.conf.default
           sed -i 's|git.openwrt.org/project/luci.git|github.com/openwrt/luci.git|g' feeds.conf.default
@@ -125,9 +125,17 @@ jobs:
           done || exit 1
 
           ./scripts/feeds install -a
-          
+
           # 4. JALANKAN DEFCONFIG DI AKHIR
           make defconfig
+
+      - name: Debug Check Package
+        run: |
+          ls -la sdk/package/luci-app-neko/
+          cat sdk/package/luci-app-neko/Makefile | head -20
+          cd sdk
+          ./scripts/feeds list -s | grep neko || echo "NOT IN FEED INDEX"
+          grep -r "luci-app-neko" tmp/.packagedeps 2>/dev/null | head -5 || echo "NOT IN PACKAGEDEPS"
 
       - name: Compile
         run: |
