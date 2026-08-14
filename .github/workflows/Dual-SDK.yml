@@ -155,15 +155,24 @@ jobs:
           echo "Isi sdk/package/luci-app-neko setelah copy:"
           find sdk/package/luci-app-neko -maxdepth 2
 
-      - name: Configure
+      - name: Configure and Compile
         run: |
           cd sdk
-          # defconfig HARUS setelah package di-copy, karena defconfig
-          # cuma nge-scan isi package/ yang sudah ada di disk saat itu.
-          # Kalau dijalankan sebelum copy, luci-app-neko gak akan
-          # kebaca di .config dan step compile di bawah bisa gagal
-          # silent (target package/luci-app-neko/compile ada tapi
-          # konfigurasi kernel/base belum sinkron).
+          # defconfig dan compile digabung jadi SATU step/proses shell.
+          #
+          # Root cause yang ditemukan: menjalankan `make defconfig` dan
+          # `make package/luci-app-neko/compile` sebagai DUA step
+          # terpisah menyebabkan .config yang ditulis di step pertama
+          # tidak terbawa ke step kedua secara konsisten - proses make
+          # kedua memicu ulang prepare-tmpinfo (scan package/ dari nol)
+          # dan pada scan ulang ini luci-app-neko hilang dari
+          # .config/tmp meski foldernya masih ada secara fisik di disk
+          # (dikonfirmasi lewat debug logging). Ini kemungkinan bug/
+          # quirk pada caching internal tmp/ milik OpenWrt buildsystem
+          # ketika proses make dijalankan ulang di invocation shell
+          # yang berbeda. Menyatukan keduanya dalam satu proses make
+          # (satu shell run) menghindari regenerasi tmp/ yang tidak
+          # konsisten ini.
           #
           # Catatan: defconfig akan mencetak banyak WARNING (dependency
           # paket lain yang tidak ada) dan bahkan "error: recursive
@@ -174,15 +183,11 @@ jobs:
           # setelahnya. Jangan treat baris ini sebagai kegagalan step.
           make defconfig
 
-      - name: Compile
-        run: |
-          cd sdk
           echo "=== Debug: isi package/luci-app-neko sebelum compile ==="
           find package/luci-app-neko -maxdepth 2 2>&1 || echo "FOLDER TIDAK ADA"
           echo "=== Debug: apakah luci-app-neko ada di .config ==="
           grep -i "luci.app.neko" .config || echo "TIDAK ADA DI .config"
-          echo "=== Debug: apakah ada di tmp/.packagesubdirs atau tmp/.packageinfo ==="
-          grep -rl "luci-app-neko" tmp/ 2>/dev/null | head -20 || echo "TIDAK DITEMUKAN DI tmp/"
+
           echo "=== Mulai compile ==="
           make package/luci-app-neko/compile V=s -j$(nproc)
 
