@@ -1,4 +1,4 @@
-name: Build luci-app-neko (Dual SDK)
+name: Build luci-app-neko
 
 permissions:
   contents: write
@@ -19,14 +19,6 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     timeout-minutes: 180
-
-    strategy:
-      matrix:
-        sdk:
-          - url: "https://downloads.openwrt.org/releases/25.12.5/targets/x86/64/openwrt-sdk-25.12.5-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst"
-            type: "apk"
-          - url: "https://downloads.openwrt.org/releases/24.10.7/targets/x86/64/openwrt-sdk-24.10.7-x86-64_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
-            type: "ipk"
 
     steps:
       - name: Checkout Repository
@@ -52,11 +44,10 @@ jobs:
 
       - name: Download SDK
         run: |
-          URL="${{ matrix.sdk.url }}"
+          URL="https://downloads.openwrt.org/releases/24.10.7/targets/x86/64/openwrt-sdk-24.10.7-x86-64_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
           FILE=$(basename "$URL")
           BASE_URL=$(dirname "$URL")
 
-          # Download dengan retry, hapus file lama tiap percobaan
           for i in 1 2 3 4 5; do
             echo "Attempt $i: downloading $FILE"
             rm -f "$FILE"
@@ -68,7 +59,6 @@ jobs:
             sleep 10
           done
 
-          # Verify checksum kalau sha256sums tersedia
           if wget -q -O sha256sums "$BASE_URL/sha256sums"; then
             EXPECTED=$(grep " \*\?$FILE\$" sha256sums | awk '{print $1}')
             ACTUAL=$(sha256sum "$FILE" | awk '{print $1}')
@@ -81,7 +71,6 @@ jobs:
             echo "WARNING: sha256sums tidak ditemukan, skip verifikasi"
           fi
 
-          # Validasi archive sebelum extract
           if ! tar --use-compress-program=unzstd -tf "$FILE" > /dev/null 2>&1; then
             echo "ERROR: archive corrupt"
             exit 1
@@ -95,18 +84,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: sdk/dl
-          # Key disertai SDK URL (unik per rilis+arch) dan hash Makefile,
-          # supaya cache invalidate otomatis saat versi SDK atau source
-          # package berubah, dan tidak ketuker antara build apk vs ipk.
-          key: openwrt-dl-${{ matrix.sdk.type }}-${{ hashFiles('luci-app-neko/Makefile') }}-${{ runner.os }}
+          key: openwrt-dl-ipk-${{ hashFiles('luci-app-neko/Makefile') }}-${{ runner.os }}
           restore-keys: |
-            openwrt-dl-${{ matrix.sdk.type }}-
+            openwrt-dl-ipk-
 
       - name: Prepare SDK
         run: |
           cd sdk
 
-          # Ganti mirror ke GitHub
           sed -i 's|git.openwrt.org/openwrt/openwrt.git|github.com/openwrt/openwrt.git|g' feeds.conf.default
           sed -i 's|git.openwrt.org/project/luci.git|github.com/openwrt/luci.git|g' feeds.conf.default
           sed -i 's|git.openwrt.org/feed/packages.git|github.com/openwrt/packages.git|g' feeds.conf.default
@@ -116,9 +101,6 @@ jobs:
           git config --global http.version HTTP/1.1
           export GIT_OPTIONAL_LOCKS=0
 
-          # Update feeds dengan retry. Exit code for-loop di bash gak
-          # otomatis mencerminkan "semua percobaan gagal", jadi pakai
-          # flag eksplisit biar reliable.
           FEEDS_OK=0
           for i in 1 2 3; do
             if ./scripts/feeds update -a; then
@@ -135,79 +117,31 @@ jobs:
 
           ./scripts/feeds install -a
 
-          # Guard eksplisit: luci-app-neko/Makefile pakai
-          # "include $(TOPDIR)/feeds/luci/luci.mk". Kalau feed luci
-          # gagal ke-install (misal update sempat gagal parsial di
-          # percobaan sebelumnya, atau index korup), file ini gak ada
-          # dan Makefile package akan gagal di-parse SECARA SILENT
-          # (cuma warning, bukan hard error) -> muncul belakangan
-          # sebagai "No rule to make target .../compile" tanpa pesan
-          # error yang jelas nunjuk ke akar masalahnya.
           if [ ! -f feeds/luci/luci.mk ]; then
             echo "ERROR: feeds/luci/luci.mk tidak ditemukan - feed 'luci' gagal ter-install."
-            echo "Cek log 'feeds update -a' di atas untuk error spesifiknya."
             exit 1
           fi
 
       - name: Copy Package
-        run: |
-          cp -r luci-app-neko sdk/package/
-          echo "Isi sdk/package/luci-app-neko setelah copy:"
-          find sdk/package/luci-app-neko -maxdepth 2
+        run: cp -r luci-app-neko sdk/package/
 
       - name: Configure and Compile
         run: |
           cd sdk
-          # defconfig dan compile digabung jadi SATU step/proses shell.
-          #
-          # Root cause yang ditemukan: menjalankan `make defconfig` dan
-          # `make package/luci-app-neko/compile` sebagai DUA step
-          # terpisah menyebabkan .config yang ditulis di step pertama
-          # tidak terbawa ke step kedua secara konsisten - proses make
-          # kedua memicu ulang prepare-tmpinfo (scan package/ dari nol)
-          # dan pada scan ulang ini luci-app-neko hilang dari
-          # .config/tmp meski foldernya masih ada secara fisik di disk
-          # (dikonfirmasi lewat debug logging). Ini kemungkinan bug/
-          # quirk pada caching internal tmp/ milik OpenWrt buildsystem
-          # ketika proses make dijalankan ulang di invocation shell
-          # yang berbeda. Menyatukan keduanya dalam satu proses make
-          # (satu shell run) menghindari regenerasi tmp/ yang tidak
-          # konsisten ini.
-          #
-          # Catatan: defconfig akan mencetak banyak WARNING (dependency
-          # paket lain yang tidak ada) dan bahkan "error: recursive
-          # dependency detected" untuk paket upstream seperti
-          # nginx-mod-ubus. Ini bug dikenal di feed openwrt/packages
-          # (lihat issue serupa: PACKAGE_tar, opennds, dll) dan TIDAK
-          # fatal - defconfig tetap menulis .config dengan sukses
-          # setelahnya. Jangan treat baris ini sebagai kegagalan step.
           make defconfig
-
-          echo "=== Debug: isi package/luci-app-neko sebelum compile ==="
-          find package/luci-app-neko -maxdepth 2 2>&1 || echo "FOLDER TIDAK ADA"
-          echo "=== Debug: apakah luci-app-neko ada di .config ==="
-          grep -i "luci.app.neko" .config || echo "TIDAK ADA DI .config"
-
-          echo "=== Mulai compile ==="
           make package/luci-app-neko/compile V=s -j$(nproc)
 
       - name: Collect Output
         run: |
           VERSION="${{ steps.get_version.outputs.version }}"
-          TYPE="${{ matrix.sdk.type }}"
 
-          FILE=$(find sdk/bin/packages -name "luci-app-neko*.$TYPE" | head -n1)
+          FILE=$(find sdk/bin/packages -name "luci-app-neko*.ipk" | head -n1)
           if [ -z "$FILE" ]; then
-            echo "ERROR: Package luci-app-neko*.$TYPE tidak ditemukan!"
+            echo "ERROR: Package luci-app-neko*.ipk tidak ditemukan!"
             exit 1
           fi
 
-          if [ "$TYPE" = "apk" ]; then
-            FINAL="luci-app-neko-${VERSION}.apk"
-          else
-            FINAL="luci-app-neko_${VERSION}_all.ipk"
-          fi
-
+          FINAL="luci-app-neko_${VERSION}_all.ipk"
           cp "$FILE" "$GITHUB_WORKSPACE/$FINAL"
           echo "FINAL_NAME=$FINAL" >> $GITHUB_ENV
           echo "Built: $FINAL"
@@ -215,7 +149,7 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: luci-app-neko_${{ steps.get_version.outputs.version }}_${{ matrix.sdk.type }}
+          name: luci-app-neko_${{ steps.get_version.outputs.version }}_ipk
           path: ${{ env.FINAL_NAME }}
           retention-days: 1
 
@@ -225,9 +159,7 @@ jobs:
         with:
           tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v{0}', steps.get_version.outputs.version) }}
           name: luci-app-neko v${{ steps.get_version.outputs.version }}
-          files: |
-            luci-app-neko-${{ steps.get_version.outputs.version }}.apk
-            luci-app-neko_${{ steps.get_version.outputs.version }}_all.ipk
+          files: luci-app-neko_${{ steps.get_version.outputs.version }}_all.ipk
           fail_on_unmatched_files: false
           generate_release_notes: false
           
