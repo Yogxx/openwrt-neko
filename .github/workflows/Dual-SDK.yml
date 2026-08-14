@@ -49,6 +49,7 @@ jobs:
             gcc-multilib g++-multilib gettext git \
             libncurses-dev libssl-dev python3-distutils \
             rsync unzip zlib1g-dev file wget curl xz-utils zstd
+
       - name: Download SDK
         run: |
           URL="${{ matrix.sdk.url }}"
@@ -94,7 +95,12 @@ jobs:
         uses: actions/cache@v4
         with:
           path: sdk/dl
-          key: openwrt-dl-${{ matrix.sdk.type }}-${{ runner.os }}
+          # Key disertai SDK URL (unik per rilis+arch) dan hash Makefile,
+          # supaya cache invalidate otomatis saat versi SDK atau source
+          # package berubah, dan tidak ketuker antara build apk vs ipk.
+          key: openwrt-dl-${{ matrix.sdk.type }}-${{ hashFiles('luci-app-neko/Makefile') }}-${{ runner.os }}
+          restore-keys: |
+            openwrt-dl-${{ matrix.sdk.type }}-
 
       - name: Prepare SDK
         run: |
@@ -116,10 +122,20 @@ jobs:
           done || exit 1
 
           ./scripts/feeds install -a
-          make defconfig
 
       - name: Copy Package
         run: cp -r luci-app-neko sdk/package/
+
+      - name: Configure
+        run: |
+          cd sdk
+          # defconfig HARUS setelah package di-copy, karena defconfig
+          # cuma nge-scan isi package/ yang sudah ada di disk saat itu.
+          # Kalau dijalankan sebelum copy, luci-app-neko gak akan
+          # kebaca di .config dan step compile di bawah bisa gagal
+          # silent (target package/luci-app-neko/compile ada tapi
+          # konfigurasi kernel/base belum sinkron).
+          make defconfig
 
       - name: Compile
         run: |
@@ -165,3 +181,4 @@ jobs:
             luci-app-neko_${{ steps.get_version.outputs.version }}_all.ipk
           fail_on_unmatched_files: false
           generate_release_notes: false
+          
