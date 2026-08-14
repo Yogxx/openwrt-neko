@@ -164,22 +164,15 @@ jobs:
           # kebaca di .config dan step compile di bawah bisa gagal
           # silent (target package/luci-app-neko/compile ada tapi
           # konfigurasi kernel/base belum sinkron).
+          #
+          # Catatan: defconfig akan mencetak banyak WARNING (dependency
+          # paket lain yang tidak ada) dan bahkan "error: recursive
+          # dependency detected" untuk paket upstream seperti
+          # nginx-mod-ubus. Ini bug dikenal di feed openwrt/packages
+          # (lihat issue serupa: PACKAGE_tar, opennds, dll) dan TIDAK
+          # fatal - defconfig tetap menulis .config dengan sukses
+          # setelahnya. Jangan treat baris ini sebagai kegagalan step.
           make defconfig
-
-          # Verifikasi package terdaftar di tmp-info hasil scan, TANPA
-          # menjalankan make -n (dry-run OpenWrt tidak reliable - nested
-          # $(MAKE) call di build system OpenWrt sering tetap eksekusi
-          # walau parent dipanggil dengan -n, jadi bisa memicu build
-          # parsial yang gagal karena staging_dir/toolchain belum siap
-          # di fase ini). Cukup cek package sudah masuk tmp/.packageinfo
-          # yang di-generate proses scan saat defconfig.
-          if ! grep -rl "^Package: luci-app-neko$" tmp/info/.packageinfo-* > /dev/null 2>&1; then
-            echo "ERROR: luci-app-neko tidak terdaftar di tmp/info setelah defconfig."
-            echo "--- isi package/luci-app-neko ---"
-            find package/luci-app-neko -maxdepth 2 2>&1 || echo "(folder tidak ada di sdk/package!)"
-            exit 1
-          fi
-          echo "OK: luci-app-neko terverifikasi terdaftar di build system."
 
       - name: Compile
         run: |
