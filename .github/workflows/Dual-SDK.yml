@@ -177,6 +177,13 @@ jobs:
       - name: Compile
         run: |
           cd sdk
+          echo "=== Debug: isi package/luci-app-neko sebelum compile ==="
+          find package/luci-app-neko -maxdepth 2 2>&1 || echo "FOLDER TIDAK ADA"
+          echo "=== Debug: apakah luci-app-neko ada di .config ==="
+          grep -i "luci.app.neko" .config || echo "TIDAK ADA DI .config"
+          echo "=== Debug: apakah ada di tmp/.packagesubdirs atau tmp/.packageinfo ==="
+          grep -rl "luci-app-neko" tmp/ 2>/dev/null | head -20 || echo "TIDAK DITEMUKAN DI tmp/"
+          echo "=== Mulai compile ==="
           make package/luci-app-neko/compile V=s -j$(nproc)
 
       - name: Collect Output
