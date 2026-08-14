@@ -116,15 +116,44 @@ jobs:
           git config --global http.version HTTP/1.1
           export GIT_OPTIONAL_LOCKS=0
 
-          # Update feeds dengan retry
+          # Update feeds dengan retry. Exit code for-loop di bash gak
+          # otomatis mencerminkan "semua percobaan gagal", jadi pakai
+          # flag eksplisit biar reliable.
+          FEEDS_OK=0
           for i in 1 2 3; do
-            ./scripts/feeds update -a && break || { [ $i -lt 3 ] && sleep 10; }
-          done || exit 1
+            if ./scripts/feeds update -a; then
+              FEEDS_OK=1
+              break
+            fi
+            echo "feeds update gagal (percobaan $i/3)"
+            sleep 10
+          done
+          if [ "$FEEDS_OK" -ne 1 ]; then
+            echo "ERROR: feeds update -a gagal setelah 3x percobaan"
+            exit 1
+          fi
 
           ./scripts/feeds install -a
 
+          # Guard eksplisit: luci-app-neko/Makefile pakai
+          # "include $(TOPDIR)/feeds/luci/luci.mk". Kalau feed luci
+          # gagal ke-install (misal update sempat gagal parsial di
+          # percobaan sebelumnya, atau index korup), file ini gak ada
+          # dan Makefile package akan gagal di-parse SECARA SILENT
+          # (cuma warning, bukan hard error) -> muncul belakangan
+          # sebagai "No rule to make target .../compile" tanpa pesan
+          # error yang jelas nunjuk ke akar masalahnya.
+          if [ ! -f feeds/luci/luci.mk ]; then
+            echo "ERROR: feeds/luci/luci.mk tidak ditemukan - feed 'luci' gagal ter-install."
+            echo "Cek log 'feeds update -a' di atas untuk error spesifiknya."
+            exit 1
+          fi
+
       - name: Copy Package
-        run: cp -r luci-app-neko sdk/package/
+        run: |
+          cp -r luci-app-neko sdk/package/
+          echo "Isi sdk/package/luci-app-neko setelah copy:"
+          find sdk/package/luci-app-neko -maxdepth 2
 
       - name: Configure
         run: |
@@ -136,6 +165,21 @@ jobs:
           # silent (target package/luci-app-neko/compile ada tapi
           # konfigurasi kernel/base belum sinkron).
           make defconfig
+
+          # Verifikasi package benar-benar keregister ke build system.
+          # Dry-run (-n) target compile-nya langsung -- ini satu-satunya
+          # cara yang jujur untuk memastikan target itu ada; grep ke
+          # .config bisa false-positive (nama package bisa muncul di
+          # baris lain yang tidak relevan).
+          if ! make package/luci-app-neko/compile -n > /tmp/dryrun.log 2>&1; then
+            echo "ERROR: target 'package/luci-app-neko/compile' tidak ditemukan setelah defconfig."
+            echo "--- dry-run output ---"
+            cat /tmp/dryrun.log
+            echo "--- isi package/luci-app-neko ---"
+            find package/luci-app-neko -maxdepth 2 2>&1 || echo "(folder tidak ada di sdk/package!)"
+            exit 1
+          fi
+          echo "OK: target compile untuk luci-app-neko terverifikasi ada."
 
       - name: Compile
         run: |
