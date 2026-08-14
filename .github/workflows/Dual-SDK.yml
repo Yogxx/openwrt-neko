@@ -166,20 +166,20 @@ jobs:
           # konfigurasi kernel/base belum sinkron).
           make defconfig
 
-          # Verifikasi package benar-benar keregister ke build system.
-          # Dry-run (-n) target compile-nya langsung -- ini satu-satunya
-          # cara yang jujur untuk memastikan target itu ada; grep ke
-          # .config bisa false-positive (nama package bisa muncul di
-          # baris lain yang tidak relevan).
-          if ! make package/luci-app-neko/compile -n > /tmp/dryrun.log 2>&1; then
-            echo "ERROR: target 'package/luci-app-neko/compile' tidak ditemukan setelah defconfig."
-            echo "--- dry-run output ---"
-            cat /tmp/dryrun.log
+          # Verifikasi package terdaftar di tmp-info hasil scan, TANPA
+          # menjalankan make -n (dry-run OpenWrt tidak reliable - nested
+          # $(MAKE) call di build system OpenWrt sering tetap eksekusi
+          # walau parent dipanggil dengan -n, jadi bisa memicu build
+          # parsial yang gagal karena staging_dir/toolchain belum siap
+          # di fase ini). Cukup cek package sudah masuk tmp/.packageinfo
+          # yang di-generate proses scan saat defconfig.
+          if ! grep -rl "^Package: luci-app-neko$" tmp/info/.packageinfo-* > /dev/null 2>&1; then
+            echo "ERROR: luci-app-neko tidak terdaftar di tmp/info setelah defconfig."
             echo "--- isi package/luci-app-neko ---"
             find package/luci-app-neko -maxdepth 2 2>&1 || echo "(folder tidak ada di sdk/package!)"
             exit 1
           fi
-          echo "OK: target compile untuk luci-app-neko terverifikasi ada."
+          echo "OK: luci-app-neko terverifikasi terdaftar di build system."
 
       - name: Compile
         run: |
