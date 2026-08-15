@@ -15,9 +15,18 @@ TUN_MARK=0x81
 TUN_MASK=0xff
 TUN_TABLE=101
 
-PRIVATE_RANGES="0.0.0.0/8, 10.0.0.0/8, 127.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/16, 224.0.0.0/3"
+# Flag in-memory — reset setiap kali add_firewall_rule dipanggil
+TUN_BASE_DONE=0
+TPROXY_BASE_DONE=0
+REDIRECT_BASE_DONE=0
+
+# ---------------------------------------------------------------------------
+# PROCD HOOKS
+# ---------------------------------------------------------------------------
 
 start_service() {
+    local enabled core selected config binary cmd delay
+
     enabled=$(uci -q get neko.cfg.enabled)
     [ "$enabled" = "1" ] || {
         logger "NEKO: disabled, not starting"
@@ -41,7 +50,7 @@ start_service() {
     [ -x "$binary" ] || { logger "NEKO: binary not found: $binary"; return 1; }
     [ -f "$config" ] || { logger "NEKO: config not found: $config"; return 1; }
 
-    logger "NEKO: start ($core) using $config"
+    logger "NEKO: starting ($core) using $config"
 
     procd_open_instance
     procd_set_param command $binary $cmd
@@ -49,9 +58,9 @@ start_service() {
     procd_set_param stdout 1
     procd_set_param stderr 1
     procd_close_instance
-}
 
-service_started() {
+    # Tunggu core ready, lalu pasang firewall rules.
+    # Harus di sini karena service_started() tidak dipanggil otomatis oleh procd.
     delay=$(uci -q get neko.cfg.delay)
     sleep "${delay:-2}"
     add_firewall_rule
@@ -65,46 +74,113 @@ reload_service() {
     restart
 }
 
+# ---------------------------------------------------------------------------
+# UCI HELPERS
+# ---------------------------------------------------------------------------
+
 get_tcp_mode() {
+    local mode
     mode=$(uci -q get neko.cfg.tcp_mode)
-    [ -n "$mode" ] || mode="redirect"
-    echo "$mode"
+    echo "${mode:-redirect}"
 }
 
 get_udp_mode() {
+    local mode
     mode=$(uci -q get neko.cfg.udp_mode)
-    [ -n "$mode" ] || mode="tun"
-    echo "$mode"
+    echo "${mode:-tun}"
 }
 
-wait_tun_interface() {
-    for i in $(seq 1 5); do
-        ip link show Meta >/dev/null 2>&1 && return 0
+get_tun_iface() {
+    local iface
+    iface=$(uci -q get neko.cfg.tun_interface)
+    echo "${iface:-Meta}"
+}
+
+get_lan_iface() {
+    local iface
+    iface=$(uci -q get neko.cfg.lan_interface)
+    echo "${iface:-br-lan}"
+}
+
+# ---------------------------------------------------------------------------
+# NFT HELPER — private IPv4 ranges sebagai named set per table
+# Pakai heredoc supaya nft yang handle parsing, bukan shell expansion.
+# ---------------------------------------------------------------------------
+
+nft_add_private_set() {
+    local table="$1"
+    nft -f - 2>/dev/null <<EOF
+add set inet ${table} private4 { type ipv4_addr; flags interval; }
+add element inet ${table} private4 { 0.0.0.0/8, 10.0.0.0/8, 127.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/16, 224.0.0.0/3 }
+EOF
+}
+
+# ---------------------------------------------------------------------------
+# WAIT HELPERS
+# ---------------------------------------------------------------------------
+
+wait_port_ready() {
+    local port="$1"
+    local hex_port i
+    hex_port=$(printf '%04X' "$port")
+    for i in $(seq 1 10); do
+        ss -ltn 2>/dev/null | grep -q ":${port}[[:space:]]" && return 0
+        awk '{print $2}' /proc/net/tcp  2>/dev/null | grep -qi ":${hex_port}$" && return 0
+        awk '{print $2}' /proc/net/tcp6 2>/dev/null | grep -qi ":${hex_port}$" && return 0
         sleep 1
     done
+    logger "NEKO: port $port not ready after 10s"
     return 1
 }
 
+wait_tun_interface() {
+    local tun_iface i
+    tun_iface=$(get_tun_iface)
+    for i in $(seq 1 10); do
+        ip link show "$tun_iface" >/dev/null 2>&1 && return 0
+        sleep 1
+    done
+    logger "NEKO: interface $tun_iface not found after 10s"
+    return 1
+}
+
+# ---------------------------------------------------------------------------
+# TUN
+# ---------------------------------------------------------------------------
+
 setup_tun_base() {
+    local tun_iface lan_iface
+    tun_iface=$(get_tun_iface)
+    lan_iface=$(get_lan_iface)
+
     wait_tun_interface || {
-        logger "NEKO: Meta interface not found, skip TUN setup"
+        logger "NEKO: $tun_iface not found, skip TUN setup"
         return 1
     }
 
+    # Policy routing — traffic bertanda TUN_MARK dikirim lewat tun interface
     ip rule add fwmark $TUN_MARK/$TUN_MASK table $TUN_TABLE priority 1025 2>/dev/null
-    ip route add default dev Meta table $TUN_TABLE 2>/dev/null
-    ip rule add iif Meta lookup main priority 900 2>/dev/null
+    ip route add default dev "$tun_iface" table $TUN_TABLE 2>/dev/null
+    # Traffic dari tun interface sendiri lookup ke main table (hindari loop)
+    ip rule add iif "$tun_iface" lookup main priority 900 2>/dev/null
 
+    # nftables table + chain
     nft add table inet neko_tun 2>/dev/null
     nft add chain inet neko_tun prerouting \
         '{ type filter hook prerouting priority mangle; policy accept; }' 2>/dev/null
+
+    # Named set untuk private ranges
+    nft_add_private_set neko_tun
+
+    # Bypass rules — urutan penting: reply, private, tun-iface sendiri
     nft add rule inet neko_tun prerouting \
         ct direction reply return 2>/dev/null
     nft add rule inet neko_tun prerouting \
-        ip daddr { $PRIVATE_RANGES } return 2>/dev/null
+        ip daddr @private4 return 2>/dev/null
     nft add rule inet neko_tun prerouting \
-        iif "Meta" return 2>/dev/null
+        iif "$tun_iface" return 2>/dev/null
 
+    # Firewall zone untuk tun interface agar fw4 tidak blokir forward
     uci -q delete firewall.neko_proxy_zone
     uci set firewall.neko_proxy_zone="zone"
     uci set firewall.neko_proxy_zone.name="neko_proxy"
@@ -113,152 +189,222 @@ setup_tun_base() {
     uci set firewall.neko_proxy_zone.input="ACCEPT"
     uci set firewall.neko_proxy_zone.masq="1"
     uci set firewall.neko_proxy_zone.mtu_fix="1"
-    uci set firewall.neko_proxy_zone.device="Meta"
+    uci set firewall.neko_proxy_zone.device="$tun_iface"
     uci -q delete firewall.neko_proxy_fwd
     uci set firewall.neko_proxy_fwd="forwarding"
     uci set firewall.neko_proxy_fwd.src="lan"
     uci set firewall.neko_proxy_fwd.dest="neko_proxy"
     uci set firewall.neko_proxy_fwd.family="ipv4"
-
     uci commit firewall
     fw4 reload
-    logger "NEKO: TUN base setup done (mark=$TUN_MARK table=$TUN_TABLE)"
-}
 
-TUN_BASE_DONE=0
+    TUN_BASE_DONE=1
+    logger "NEKO: TUN base setup done (iface=$tun_iface mark=$TUN_MARK table=$TUN_TABLE)"
+}
 
 add_tun_fw_rule() {
     local proto="$1"
-    local rule_name="$2"
-    local uci_key="$3"
+    local lan_iface
+    lan_iface=$(get_lan_iface)
 
     if [ "$TUN_BASE_DONE" = "0" ]; then
         setup_tun_base || return 1
-        TUN_BASE_DONE=1
     fi
 
+    # Clear 8 bit bawah mark lalu set TUN_MARK (0x81)
+    # Pakai ekspresi nft langsung — jangan dikutip sebagai satu string
     nft add rule inet neko_tun prerouting \
-        iifname "br-lan" meta l4proto $proto \
-        meta mark set "meta mark & 0xffffff81 | $TUN_MARK" 2>/dev/null
+        iifname "$lan_iface" meta l4proto "$proto" \
+        meta mark set mark and 0xffffff00 or $TUN_MARK 2>/dev/null
 
-    logger "NEKO: TUN $proto mark rule added"
+    logger "NEKO: TUN $proto mark rule added (iface=$lan_iface mark=$TUN_MARK)"
 }
 
 remove_tun_fw_rule() {
+    local tun_iface
+    tun_iface=$(get_tun_iface)
+
     nft delete table inet neko_tun 2>/dev/null
     ip rule del fwmark $TUN_MARK/$TUN_MASK table $TUN_TABLE 2>/dev/null
-    ip route del default dev Meta table $TUN_TABLE 2>/dev/null
-    ip rule del iif Meta lookup main priority 900 2>/dev/null
+    ip route del default dev "$tun_iface" table $TUN_TABLE 2>/dev/null
+    ip rule del iif "$tun_iface" lookup main priority 900 2>/dev/null
 
     uci -q delete firewall.neko_proxy_zone
     uci -q delete firewall.neko_proxy_fwd
-    uci -q delete firewall.neko_tun_tcp
-    uci -q delete firewall.neko_tun_udp
     uci commit firewall
-    fw4 reload
+
+    TUN_BASE_DONE=0
     logger "NEKO: TUN rules removed"
 }
 
+# ---------------------------------------------------------------------------
+# REDIRECT (TCP)
+# ---------------------------------------------------------------------------
+
 setup_redirect_table() {
+    [ "$REDIRECT_BASE_DONE" = "1" ] && return 0
+
     nft add table inet neko_redirect 2>/dev/null
     nft add chain inet neko_redirect prerouting \
         '{ type nat hook prerouting priority dstnat; policy accept; }' 2>/dev/null
+
+    nft_add_private_set neko_redirect
+
     nft add rule inet neko_redirect prerouting \
-        ip daddr { $PRIVATE_RANGES } return 2>/dev/null
+        ip daddr @private4 return 2>/dev/null
+
+    REDIRECT_BASE_DONE=1
 }
 
 add_redirect_tcp() {
+    local lan_iface
+    lan_iface=$(get_lan_iface)
+
     setup_redirect_table
+
+    # Filter iifname supaya hanya traffic dari LAN yang di-redirect
     nft add rule inet neko_redirect prerouting \
-        meta l4proto tcp redirect to :$REDIR_PORT 2>/dev/null
-    logger "NEKO: REDIRECT TCP rules added (port $REDIR_PORT)"
+        iifname "$lan_iface" meta l4proto tcp redirect to :"$REDIR_PORT" 2>/dev/null
+
+    logger "NEKO: REDIRECT TCP rules added (iface=$lan_iface port=$REDIR_PORT)"
 }
 
 remove_redirect_table() {
     nft delete table inet neko_redirect 2>/dev/null
+    REDIRECT_BASE_DONE=0
     logger "NEKO: REDIRECT rules removed"
 }
 
+# ---------------------------------------------------------------------------
+# DNS REDIRECT
+# ---------------------------------------------------------------------------
+
 add_dns_redirect() {
+    local lan_iface
+    lan_iface=$(get_lan_iface)
+
     nft add table inet neko_dns 2>/dev/null
     nft add chain inet neko_dns prerouting \
         '{ type nat hook prerouting priority dstnat; policy accept; }' 2>/dev/null
     nft add rule inet neko_dns prerouting \
-        iifname "br-lan" udp dport 53 redirect to :$DNS_PORT 2>/dev/null
+        iifname "$lan_iface" udp dport 53 redirect to :"$DNS_PORT" 2>/dev/null
     nft add rule inet neko_dns prerouting \
-        iifname "br-lan" tcp dport 53 redirect to :$DNS_PORT 2>/dev/null
-    logger "NEKO: DNS redirect rules added (53 -> $DNS_PORT)"
+        iifname "$lan_iface" tcp dport 53 redirect to :"$DNS_PORT" 2>/dev/null
+
+    logger "NEKO: DNS redirect added (iface=$lan_iface 53 -> $DNS_PORT)"
 }
 
 remove_dns_redirect() {
     nft delete table inet neko_dns 2>/dev/null
-    logger "NEKO: DNS redirect rules removed"
+    logger "NEKO: DNS redirect removed"
 }
 
+# ---------------------------------------------------------------------------
+# TPROXY (TCP + UDP)
+# ---------------------------------------------------------------------------
+
 setup_tproxy_table() {
+    [ "$TPROXY_BASE_DONE" = "1" ] && return 0
+
     ip rule add fwmark $TPROXY_MARK table $TPROXY_TABLE 2>/dev/null
     ip route add local default dev lo table $TPROXY_TABLE 2>/dev/null
 
     nft add table inet neko_tproxy 2>/dev/null
     nft add chain inet neko_tproxy prerouting \
         '{ type filter hook prerouting priority mangle; policy accept; }' 2>/dev/null
+
+    nft_add_private_set neko_tproxy
+
+    # Bypass: paket yang sudah di-mark (loop guard), local dst, private dst
     nft add rule inet neko_tproxy prerouting \
-        meta mark $TUN_MARK return 2>/dev/null
+        meta mark $TPROXY_MARK return 2>/dev/null
     nft add rule inet neko_tproxy prerouting \
         fib daddr type local return 2>/dev/null
     nft add rule inet neko_tproxy prerouting \
-        ip daddr { $PRIVATE_RANGES } return 2>/dev/null
+        ip daddr @private4 return 2>/dev/null
+
+    TPROXY_BASE_DONE=1
 }
 
 add_tproxy_tcp() {
+    local lan_iface
+    lan_iface=$(get_lan_iface)
+
     setup_tproxy_table
+
     nft add rule inet neko_tproxy prerouting \
-        meta l4proto tcp \
-        tproxy to :$TPROXY_PORT meta mark set $TPROXY_MARK 2>/dev/null
-    logger "NEKO: TPROXY TCP rules added (port $TPROXY_PORT)"
+        iifname "$lan_iface" meta l4proto tcp \
+        tproxy to :"$TPROXY_PORT" meta mark set $TPROXY_MARK 2>/dev/null
+
+    logger "NEKO: TPROXY TCP rules added (iface=$lan_iface port=$TPROXY_PORT)"
 }
 
 add_tproxy_udp() {
+    local lan_iface
+    lan_iface=$(get_lan_iface)
+
     setup_tproxy_table
+
     nft add rule inet neko_tproxy prerouting \
-        meta l4proto udp \
-        tproxy to :$TPROXY_PORT meta mark set $TPROXY_MARK 2>/dev/null
-    logger "NEKO: TPROXY UDP rules added (port $TPROXY_PORT)"
+        iifname "$lan_iface" meta l4proto udp \
+        tproxy to :"$TPROXY_PORT" meta mark set $TPROXY_MARK 2>/dev/null
+
+    logger "NEKO: TPROXY UDP rules added (iface=$lan_iface port=$TPROXY_PORT)"
 }
 
 remove_tproxy_table() {
     nft delete table inet neko_tproxy 2>/dev/null
     ip rule del fwmark $TPROXY_MARK table $TPROXY_TABLE 2>/dev/null
     ip route del local default dev lo table $TPROXY_TABLE 2>/dev/null
+    TPROXY_BASE_DONE=0
     logger "NEKO: TPROXY rules removed"
 }
 
+# ---------------------------------------------------------------------------
+# ORCHESTRATOR
+# ---------------------------------------------------------------------------
+
 add_firewall_rule() {
+    local tcp_mode udp_mode
+
+    # Reset flags supaya setup_*_table jalan fresh
+    TUN_BASE_DONE=0
+    TPROXY_BASE_DONE=0
+    REDIRECT_BASE_DONE=0
+
     tcp_mode=$(get_tcp_mode)
     udp_mode=$(get_udp_mode)
     logger "NEKO: applying rules tcp=$tcp_mode udp=$udp_mode"
+
     add_dns_redirect
 
     case "$tcp_mode" in
         redirect) add_redirect_tcp ;;
         tproxy)   add_tproxy_tcp ;;
-        tun)      add_tun_fw_rule "tcp" "Neko TUN TCP" "neko_tun_tcp" ;;
+        tun)      add_tun_fw_rule "tcp" ;;
         disable)  logger "NEKO: TCP proxy disabled" ;;
-        *)        logger "NEKO: unknown tcp_mode '$tcp_mode', fallback redirect"; add_redirect_tcp ;;
+        *)        logger "NEKO: unknown tcp_mode '$tcp_mode', fallback redirect"
+                  add_redirect_tcp ;;
     esac
 
     case "$udp_mode" in
-        tun)      add_tun_fw_rule "udp" "Neko TUN UDP" "neko_tun_udp" ;;
+        tun)      add_tun_fw_rule "udp" ;;
         tproxy)   add_tproxy_udp ;;
         disable)  logger "NEKO: UDP proxy disabled" ;;
-        *)        logger "NEKO: unknown udp_mode '$udp_mode', fallback tun"; add_tun_fw_rule "udp" "Neko TUN UDP" "neko_tun_udp" ;;
+        *)        logger "NEKO: unknown udp_mode '$udp_mode', fallback tun"
+                  add_tun_fw_rule "udp" ;;
     esac
 }
 
 remove_firewall_rule() {
+    # Hapus semua nft tables dan ip rules
+    # fw4 reload satu kali di akhir — setelah UCi cleanup dari remove_tun_fw_rule
     remove_tun_fw_rule
     remove_redirect_table
     remove_tproxy_table
     remove_dns_redirect
+
+    # fw4 reload dipanggil sekali di sini setelah semua uci cleanup selesai
+    fw4 reload
     logger "NEKO: all firewall rules removed"
 }
