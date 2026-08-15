@@ -97,27 +97,37 @@ jobs:
         with:
           script: |
             const keepLast = parseInt('${{ inputs.keep_last_runs }}', 10);
-            const workflows = await github.paginate(
-              github.rest.actions.listRepoWorkflows,
-              { owner: context.repo.owner, repo: context.repo.repo }
+
+            // Ambil SEMUA run di level repo langsung, bukan lewat listRepoWorkflows.
+            // listRepoWorkflows cuma mengembalikan workflow yang file .yml-nya
+            // masih ada di branch default — kalau workflow sudah dihapus/rename
+            // filenya, run lamanya jadi "orphan" dan tidak pernah kescan.
+            console.log('Mengambil seluruh workflow run di repo...');
+            const allRuns = await github.paginate(
+              github.rest.actions.listWorkflowRunsForRepo,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                per_page: 100
+              }
             );
+            console.log(`Total run ditemukan: ${allRuns.length}`);
 
-            for (const wf of workflows) {
-              const runs = await github.paginate(
-                github.rest.actions.listWorkflowRuns,
-                {
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  workflow_id: wf.id,
-                  per_page: 100
-                }
-              );
+            // Group manual per workflow_id (mencakup workflow yang sudah dihapus filenya)
+            const grouped = {};
+            for (const run of allRuns) {
+              const key = run.workflow_id;
+              if (!grouped[key]) grouped[key] = [];
+              grouped[key].push(run);
+            }
 
-              // urutkan terbaru dulu, skip N run terbaru (default keep 3)
+            let totalDeleted = 0;
+            for (const [wfId, runs] of Object.entries(grouped)) {
               const sorted = runs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
               const toDelete = sorted.slice(keepLast);
+              const wfName = sorted[0]?.name || `workflow_id:${wfId}`;
 
-              console.log(`Workflow "${wf.name}": total ${sorted.length} run, hapus ${toDelete.length}`);
+              console.log(`Workflow "${wfName}": total ${sorted.length} run, hapus ${toDelete.length}`);
 
               for (const run of toDelete) {
                 try {
@@ -127,11 +137,13 @@ jobs:
                     run_id: run.id
                   });
                   console.log(`  Hapus run #${run.run_number} (${run.conclusion || run.status})`);
+                  totalDeleted++;
                 } catch (e) {
                   console.log(`  Gagal hapus run #${run.run_number}: ${e.message}`);
                 }
               }
             }
+            console.log(`\nTotal run dihapus: ${totalDeleted}`);
 
   cleanup-releases-tags:
     if: ${{ inputs.clean_releases || inputs.clean_tags }}
@@ -179,3 +191,4 @@ jobs:
               git tag -d "$tag" || true
             done
           fi
+          
