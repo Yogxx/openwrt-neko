@@ -1,96 +1,165 @@
-name: Delete old workflow runs
-on:
-  workflow_dispatch:
+name: Build luci-app-neko
 
 permissions:
-  actions: write
+  contents: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: 'Upload ke GitHub Releases?'
+        required: true
+        type: boolean
+        default: false
+  push:
+    tags:
+      - "v*"
 
 jobs:
-  stale:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+
     steps:
-      - uses: actions/stale@v9.0.0
-        with:
-          stale-issue-message: "Stale Issue"
-          stale-pr-message: "Stale PR"
-          stale-issue-label: "no-issue-activity"
-          exempt-issue-labels: "awaiting-approval,awaiting,work-in-progress"
-          stale-pr-label: "no-pr-activity"
-          exempt-pr-labels: "awaiting-approval,awaiting,work-in-progress"
-          days-before-issue-stale: 10
-          days-before-pr-stale: 10
-          days-before-issue-close: 5
-          days-before-pr-close: 0
-          operations-per-run: 500
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-      - name: Clear caches, tmp and trash files with log
+      - name: Extract Version
+        id: get_version
         run: |
-          echo "=== Starting cache and tmp clearing ==="
-          
-          echo "Clearing user cache folder (~/.cache)..."
-          if [ -d ~/.cache ]; then
-            rm -rf ~/.cache/* && echo "User cache cleared" || echo "Failed to clear user cache"
-          else
-            echo "~/.cache folder does not exist"
-          fi
-          
-          echo "Clearing runner /tmp directory..."
-          if [ -d /tmp ]; then
-            sudo rm -rf /tmp/* && echo "/tmp cleared" || echo "Failed to clear /tmp"
-          else
-            echo "/tmp folder does not exist"
-          fi
-          
-          echo "Clearing tmp folder in repo (if exists)..."
-          if [ -d tmp ]; then
-            rm -rf tmp/* && echo "Repo tmp folder cleared" || echo "Failed to clear repo tmp"
-          else
-            echo "Repo tmp folder does not exist"
-          fi
-          
-          echo "=== Cache and tmp clearing completed ==="
+          VERSION=$(grep "^PKG_VERSION" luci-app-neko/Makefile | sed 's/.*:=//' | tr -d '[:space:]')
+          RELEASE=$(grep "^PKG_RELEASE" luci-app-neko/Makefile | sed 's/.*:=//' | tr -d '[:space:]')
+          FULL_VERSION="${VERSION}-r${RELEASE}"
+          echo "version=$FULL_VERSION" >> $GITHUB_OUTPUT
+          echo "Detected version: $FULL_VERSION"
 
-      - name: Clear Docker logs, tmp and system prune
+      - name: Install Dependencies
         run: |
-          echo "=== Starting Docker logs and tmp cleaning ==="
+          sudo apt update
+          sudo apt install -y \
+            build-essential clang flex bison g++ gawk \
+            gcc-multilib g++-multilib gettext git \
+            libncurses-dev libssl-dev python3-distutils \
+            rsync unzip zlib1g-dev file wget curl xz-utils zstd
 
-          DOCKER_CONTAINERS_LOGS="/var/lib/docker/containers"
-          DOCKER_TMP="/var/lib/docker/tmp"
-          DOCKER_LOGS="/var/log/docker"
+      - name: Download SDK
+        run: |
+          URL="https://downloads.openwrt.org/releases/24.10.7/targets/x86/64/openwrt-sdk-24.10.7-x86-64_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
+          FILE=$(basename "$URL")
+          BASE_URL=$(dirname "$URL")
 
-          # Truncate Docker container logs to reduce size safely
-          if [ -d "$DOCKER_CONTAINERS_LOGS" ]; then
-            echo "Truncating Docker container logs in $DOCKER_CONTAINERS_LOGS..."
-            sudo find "$DOCKER_CONTAINERS_LOGS" -type f -name "*.log" -exec truncate -s 0 {} \; && echo "Docker container logs truncated" || echo "Failed to truncate Docker container logs"
+          for i in 1 2 3 4 5; do
+            echo "Attempt $i: downloading $FILE"
+            rm -f "$FILE"
+            wget -q --show-progress --tries=3 --timeout=30 "$URL" && break
+            if [ $i -eq 5 ]; then
+              echo "ERROR: gagal download SDK setelah 5x percobaan"
+              exit 1
+            fi
+            sleep 10
+          done
+
+          if wget -q -O sha256sums "$BASE_URL/sha256sums"; then
+            EXPECTED=$(grep " \*\?$FILE\$" sha256sums | awk '{print $1}')
+            ACTUAL=$(sha256sum "$FILE" | awk '{print $1}')
+            if [ -n "$EXPECTED" ] && [ "$EXPECTED" != "$ACTUAL" ]; then
+              echo "ERROR: checksum mismatch! expected=$EXPECTED actual=$ACTUAL"
+              exit 1
+            fi
+            echo "Checksum OK"
           else
-            echo "Docker container logs folder not found"
+            echo "WARNING: sha256sums tidak ditemukan, skip verifikasi"
           fi
 
-          # Remove Docker tmp files
-          if [ -d "$DOCKER_TMP" ]; then
-            echo "Removing Docker tmp files in $DOCKER_TMP..."
-            sudo rm -rf ${DOCKER_TMP}/* && echo "Docker tmp cleaned" || echo "Failed to clean Docker tmp"
-          else
-            echo "Docker tmp folder not found"
+          if ! tar --use-compress-program=unzstd -tf "$FILE" > /dev/null 2>&1; then
+            echo "ERROR: archive corrupt"
+            exit 1
           fi
 
-          # Remove Docker daemon logs
-          if [ -d "$DOCKER_LOGS" ]; then
-            echo "Removing Docker daemon logs in $DOCKER_LOGS..."
-            sudo rm -rf ${DOCKER_LOGS}/* && echo "Docker daemon logs cleaned" || echo "Failed to clean Docker daemon logs"
-          else
-            echo "Docker daemon logs folder not found"
-          fi
+          DIR=$(tar --use-compress-program=unzstd -tf "$FILE" | head -n1 | cut -d/ -f1)
+          tar --use-compress-program=unzstd -xf "$FILE"
+          mv "$DIR" sdk
 
-          echo "Running 'docker system prune -f' to clean unused Docker data..."
-          sudo docker system prune -f && echo "Docker system prune completed" || echo "Docker system prune failed"
-
-          echo "=== Docker cleanup completed ==="
-
-      - name: Delete workflow runs
-        uses: Mattraks/delete-workflow-runs@v2.0.6
+      - name: Cache dl
+        uses: actions/cache@v4
         with:
-          token: ${{ github.token }}
-          repository: ${{ github.repository }}
-          retain_days: 0
-          keep_minimum_runs: 0
+          path: sdk/dl
+          key: openwrt-dl-ipk-${{ hashFiles('luci-app-neko/Makefile') }}-${{ runner.os }}
+          restore-keys: |
+            openwrt-dl-ipk-
+
+      - name: Prepare SDK
+        run: |
+          cd sdk
+
+          sed -i 's|git.openwrt.org/openwrt/openwrt.git|github.com/openwrt/openwrt.git|g' feeds.conf.default
+          sed -i 's|git.openwrt.org/project/luci.git|github.com/openwrt/luci.git|g' feeds.conf.default
+          sed -i 's|git.openwrt.org/feed/packages.git|github.com/openwrt/packages.git|g' feeds.conf.default
+
+          git config --global http.postBuffer 1048576000
+          git config --global core.compression 0
+          git config --global http.version HTTP/1.1
+          export GIT_OPTIONAL_LOCKS=0
+
+          FEEDS_OK=0
+          for i in 1 2 3; do
+            if ./scripts/feeds update -a; then
+              FEEDS_OK=1
+              break
+            fi
+            echo "feeds update gagal (percobaan $i/3)"
+            sleep 10
+          done
+          if [ "$FEEDS_OK" -ne 1 ]; then
+            echo "ERROR: feeds update -a gagal setelah 3x percobaan"
+            exit 1
+          fi
+
+          ./scripts/feeds install -a
+
+          if [ ! -f feeds/luci/luci.mk ]; then
+            echo "ERROR: feeds/luci/luci.mk tidak ditemukan - feed 'luci' gagal ter-install."
+            exit 1
+          fi
+
+      - name: Copy Package
+        run: cp -r luci-app-neko sdk/package/
+
+      - name: Configure and Compile
+        run: |
+          cd sdk
+          make defconfig
+          make package/luci-app-neko/compile V=s -j$(nproc)
+
+      - name: Collect Output
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+
+          FILE=$(find sdk/bin/packages -name "luci-app-neko*.ipk" | head -n1)
+          if [ -z "$FILE" ]; then
+            echo "ERROR: Package luci-app-neko*.ipk tidak ditemukan!"
+            exit 1
+          fi
+
+          FINAL="luci-app-neko_${VERSION}_all.ipk"
+          cp "$FILE" "$GITHUB_WORKSPACE/$FINAL"
+          echo "FINAL_NAME=$FINAL" >> $GITHUB_ENV
+          echo "Built: $FINAL"
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: luci-app-neko_${{ steps.get_version.outputs.version }}_ipk
+          path: ${{ env.FINAL_NAME }}
+          retention-days: 1
+
+      - name: Publish Release
+        if: startsWith(github.ref, 'refs/tags/') || inputs.publish_release == true
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v{0}', steps.get_version.outputs.version) }}
+          name: luci-app-neko v${{ steps.get_version.outputs.version }}
+          files: luci-app-neko_${{ steps.get_version.outputs.version }}_all.ipk
+          fail_on_unmatched_files: false
+          generate_release_notes: false
+          
