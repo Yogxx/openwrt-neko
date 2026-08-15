@@ -26,14 +26,6 @@ Prerequisites
 - firewall4
 - OpenWrt >= 23.05
 
-Packages list
----
-| Packages | Version | Information |
-|---|---|---|
-| luci-app-neko | <div align="center"> [ ` 1.3.1 ` ](https://github.com/Yogxx/openwrt-neko/releases) </div> | Include `config simple rules` files |
-| mihomo | <div align="center"> [ ` 1.19.21 ` ](https://github.com/Yogxx/openwrt-neko/releases/tag/core_1.19.21_1.12.24)</div> | Latest stable version on [MetaCubeX](https://github.com/MetaCubeX/mihomo/releases) |
-| sing-box | <div align="center"> [ ` 1.12.24 ` ](https://github.com/Yogxx/openwrt-neko/releases/tag/core_1.19.21_1.12.24) </div> | Original [Repository](https://github.com/SagerNet/sing-box/releases) |
-
 Manual Installation
 ---
 1. Download ` mihomo ` & [luci-app-neko](https://github.com/Yogxx/openwrt-neko/releases/tag/neko-dev) install ` sing-box ` if needed
@@ -50,9 +42,6 @@ opkg install luci-app-neko*.ipk
 # for apk
 apk add --allow-untrusted luci-app-neko*.apk
 ```
-Updating
----
-- `⬆`
 
 About
 ---
