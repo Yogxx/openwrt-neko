@@ -1,0 +1,181 @@
+name: 🧹 Repo Cleanup
+
+on:
+  workflow_dispatch:
+    inputs:
+      clean_cache:
+        description: 'Hapus semua Actions cache'
+        type: boolean
+        default: true
+      clean_artifacts:
+        description: 'Hapus semua artifacts'
+        type: boolean
+        default: true
+      clean_workflow_runs:
+        description: 'Hapus history workflow runs (sukses & gagal)'
+        type: boolean
+        default: true
+      keep_last_runs:
+        description: 'Jumlah run terbaru per-workflow yang tetap disimpan'
+        type: number
+        default: 3
+      clean_releases:
+        description: 'Hapus semua releases'
+        type: boolean
+        default: false
+      clean_tags:
+        description: 'Hapus semua tags (ikut kalau releases dihapus / manual)'
+        type: boolean
+        default: false
+      keep_latest_release:
+        description: 'Simpan release + tag paling baru'
+        type: boolean
+        default: true
+
+permissions:
+  actions: write
+  contents: write
+
+jobs:
+  cleanup-cache:
+    if: ${{ inputs.clean_cache }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hapus semua cache
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          REPO="${{ github.repository }}"
+          echo "Mengambil daftar cache..."
+          cacheKeys=$(gh cache list --repo "$REPO" --limit 200 --json id --jq '.[].id')
+          if [ -z "$cacheKeys" ]; then
+            echo "Tidak ada cache."
+            exit 0
+          fi
+          for id in $cacheKeys; do
+            echo "Hapus cache id: $id"
+            gh cache delete "$id" --repo "$REPO" || true
+          done
+
+  cleanup-artifacts:
+    if: ${{ inputs.clean_artifacts }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hapus semua artifacts
+        uses: actions/github-script@v7
+        with:
+          script: |
+            let page = 1;
+            let deleted = 0;
+            while (true) {
+              const res = await github.rest.actions.listArtifactsForRepo({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                per_page: 100,
+                page: page
+              });
+              if (res.data.artifacts.length === 0) break;
+              for (const artifact of res.data.artifacts) {
+                console.log(`Hapus artifact: ${artifact.name} (id: ${artifact.id})`);
+                await github.rest.actions.deleteArtifact({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  artifact_id: artifact.id
+                });
+                deleted++;
+              }
+              page++;
+            }
+            console.log(`Total artifact dihapus: ${deleted}`);
+
+  cleanup-workflow-runs:
+    if: ${{ inputs.clean_workflow_runs }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hapus workflow runs lama (sukses & gagal)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const keepLast = parseInt('${{ inputs.keep_last_runs }}', 10);
+            const workflows = await github.paginate(
+              github.rest.actions.listRepoWorkflows,
+              { owner: context.repo.owner, repo: context.repo.repo }
+            );
+
+            for (const wf of workflows) {
+              const runs = await github.paginate(
+                github.rest.actions.listWorkflowRuns,
+                {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  workflow_id: wf.id,
+                  per_page: 100
+                }
+              );
+
+              // urutkan terbaru dulu, skip N run terbaru (default keep 3)
+              const sorted = runs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+              const toDelete = sorted.slice(keepLast);
+
+              console.log(`Workflow "${wf.name}": total ${sorted.length} run, hapus ${toDelete.length}`);
+
+              for (const run of toDelete) {
+                try {
+                  await github.rest.actions.deleteWorkflowRun({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    run_id: run.id
+                  });
+                  console.log(`  Hapus run #${run.run_number} (${run.conclusion || run.status})`);
+                } catch (e) {
+                  console.log(`  Gagal hapus run #${run.run_number}: ${e.message}`);
+                }
+              }
+            }
+
+  cleanup-releases-tags:
+    if: ${{ inputs.clean_releases || inputs.clean_tags }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Hapus releases & tags
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          REPO="${{ github.repository }}"
+          KEEP_LATEST="${{ inputs.keep_latest_release }}"
+
+          latestTag=""
+          if [ "$KEEP_LATEST" = "true" ]; then
+            latestTag=$(gh release list --repo "$REPO" --limit 1 --json tagName --jq '.[0].tagName' 2>/dev/null || echo "")
+            echo "Release/tag terbaru yang disimpan: $latestTag"
+          fi
+
+          if [ "${{ inputs.clean_releases }}" = "true" ]; then
+            echo "=== Hapus releases ==="
+            gh release list --repo "$REPO" --limit 200 --json tagName --jq '.[].tagName' | while read -r tag; do
+              if [ "$tag" = "$latestTag" ]; then
+                echo "Skip (dipertahankan): $tag"
+                continue
+              fi
+              echo "Hapus release: $tag"
+              gh release delete "$tag" --repo "$REPO" --yes || true
+            done
+          fi
+
+          if [ "${{ inputs.clean_tags }}" = "true" ]; then
+            echo "=== Hapus tags ==="
+            git fetch --tags
+            for tag in $(git tag); do
+              if [ "$tag" = "$latestTag" ]; then
+                echo "Skip (dipertahankan): $tag"
+                continue
+              fi
+              echo "Hapus tag: $tag"
+              git push --delete origin "$tag" || true
+              git tag -d "$tag" || true
+            done
+          fi
