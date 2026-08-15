@@ -4,11 +4,15 @@
 
 echo "[ $(date +%T) ] - Neko: uci-defaults starting..."
 
-uci set uhttpd.main.index_page='index.php'
-uci set uhttpd.main.interpreter='.php=/usr/bin/php-cgi'
-uci commit uhttpd
-/etc/init.d/uhttpd restart
+# Setup uhttpd untuk PHP CGI (hanya jika belum dikonfigurasi)
+uci -q get uhttpd.main.interpreter > /dev/null 2>&1 || {
+    uci set uhttpd.main.index_page='index.php'
+    uci set uhttpd.main.interpreter='.php=/usr/bin/php-cgi'
+    uci commit uhttpd
+    /etc/init.d/uhttpd reload
+}
 
+# Setup neko config default (hanya jika belum ada)
 uci -q get neko.cfg > /dev/null 2>&1 || {
     uci set neko.cfg=neko
     uci set neko.cfg.enabled='1'
@@ -24,3 +28,5 @@ uci -q get neko.cfg > /dev/null 2>&1 || {
 }
 
 echo "[ $(date +%T) ] - Neko: uci-defaults done"
+
+exit 0
