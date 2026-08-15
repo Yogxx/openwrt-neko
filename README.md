@@ -38,7 +38,7 @@
 
 ### 1. Download packages
 
-Download `mihomo` and [`luci-app-neko`](https://github.com/Yogxx/openwrt-neko/releases/tag/neko-dev) from the releases page. Also download `sing-box` if you plan to use the Sing-box core.
+Download `mihomo` and [`luci-app-neko`](https://github.com/Yogxx/openwrt-neko/releases) from the releases page. Also download `sing-box` if you plan to use the Sing-box core.
 
 ### 2. Install dependencies
 
