@@ -71,14 +71,14 @@ apk add --allow-untrusted luci-app-neko*.apk
 <details>
 <summary>Home — Mihomo</summary>
 <p>
-  <img src="https://raw.githubusercontent.com/nosignals/openwrt-neko/refs/heads/dev/img/mihomo.png" alt="Mihomo home screen">
+  <img src="https://raw.githubusercontent.com/Yogxx/openwrt-neko/refs/heads/main/img/mihomo.png" alt="Mihomo home screen">
 </p>
 </details>
 
 <details>
 <summary>Home — Sing-Box</summary>
 <p>
-  <img src="https://raw.githubusercontent.com/nosignals/openwrt-neko/refs/heads/dev/img/sing-box.png" alt="Sing-box home screen">
+  <img src="https://raw.githubusercontent.com/Yogxx/openwrt-neko/refs/heads/main/img/sing-box.png" alt="Sing-box home screen">
 </p>
 </details>
 
@@ -91,10 +91,9 @@ apk add --allow-untrusted luci-app-neko*.apk
 
 ## About
 
-This project continues the work originally started by **nosignal**, who is no longer active in maintaining it.
+This project is a fork of the original **luci-app-neko** by [nosignals](https://github.com/nosignals). Since the upstream project is no longer actively maintained, this fork continues development and updates independently.
 
 ## Credits
 
 - [nosignals](https://github.com/nosignals) — original author
 - [bobbyunknown](https://github.com/bobbyunknown)
-- 
