@@ -18,23 +18,19 @@ on:
       keep_last_runs:
         description: 'Jumlah run terbaru per-workflow yang tetap disimpan'
         type: number
-        default: 3
+        default: 0
       clean_releases:
         description: 'Hapus semua releases'
         type: boolean
-        default: false
+        default: true
       clean_tags:
         description: 'Hapus semua tags (ikut kalau releases dihapus / manual)'
         type: boolean
-        default: false
+        default: true
       keep_latest_release:
         description: 'Simpan release + tag paling baru'
         type: boolean
-        default: true
-      delete_self_run:
-        description: 'Hapus run Repo Cleanup ini sendiri setelah selesai'
-        type: boolean
-        default: true
+        default: false
 
 permissions:
   actions: write
@@ -195,42 +191,4 @@ jobs:
               git tag -d "$tag" || true
             done
           fi
-
-  delete-self:
-    if: ${{ always() && inputs.delete_self_run }}
-    needs: [cleanup-cache, cleanup-artifacts, cleanup-workflow-runs, cleanup-releases-tags]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Hapus run Repo Cleanup ini sendiri
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const runId = context.runId;
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
-
-            // Run masih berstatus "in_progress" selama job ini jalan.
-            // API deleteWorkflowRun menolak run yang belum "completed",
-            // jadi tunggu sampai statusnya berubah (job2 lain sudah 'needs',
-            // tinggal job ini sendiri yang belum kelar mencatat status akhir).
-            console.log('Menunggu run ini berstatus completed...');
-            let status = '';
-            for (let i = 0; i < 30; i++) {
-              const { data } = await github.rest.actions.getWorkflowRun({
-                owner, repo, run_id: runId
-              });
-              status = data.status;
-              console.log(`  Cek #${i + 1}: status = ${status}`);
-              if (status === 'completed') break;
-              await new Promise(r => setTimeout(r, 5000));
-            }
-
-            if (status !== 'completed') {
-              console.log('Run belum completed setelah menunggu, batal hapus (biar aman).');
-              return;
-            }
-
-            console.log(`Menghapus run #${context.runNumber} (id: ${runId})...`);
-            await github.rest.actions.deleteWorkflowRun({ owner, repo, run_id: runId });
-            console.log('Berhasil dihapus.');
-            
+          
