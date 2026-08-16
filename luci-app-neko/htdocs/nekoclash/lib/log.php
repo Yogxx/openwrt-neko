@@ -1,8 +1,6 @@
 <?php
 include '../cfg.php';
 
-$host_now = $_SERVER['SERVER_NAME'];
-
 if (isset($_GET['data'])) {
 
     $allowed = ['neko', 'bin', 'url_dash'];
@@ -23,6 +21,8 @@ if (isset($_GET['data'])) {
             echo shell_exec("logread | grep mihomo | tail -n 100");
         } elseif ($core_mode === 'singbox') {
             echo shell_exec("logread | grep sing-box | tail -n 100");
+        } else {
+            echo "No logs available: core_mode is not set (run Settings > Core Settings first)";
         }
     }
 
