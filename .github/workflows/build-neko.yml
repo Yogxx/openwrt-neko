@@ -82,8 +82,18 @@ jobs:
             sleep 5
           done
 
-          unzip -q -o zashboard.zip -d "$TARGET_DIR"
+          TMP_DIR=$(mktemp -d)
+          unzip -q -o zashboard.zip -d "$TMP_DIR"
           rm -f zashboard.zip
+
+          # Zip berisi folder pembungkus "dist/", ambil isinya langsung ke TARGET_DIR
+          if [ -d "$TMP_DIR/dist" ]; then
+            mv "$TMP_DIR/dist"/* "$TARGET_DIR/"
+          else
+            mv "$TMP_DIR"/* "$TARGET_DIR/"
+          fi
+          rm -rf "$TMP_DIR"
+
           echo "zashboard extracted to $TARGET_DIR:"
           ls -la "$TARGET_DIR"
 
@@ -203,3 +213,4 @@ jobs:
             luci-app-neko_${{ steps.get_version.outputs.version }}_all.ipk
           fail_on_unmatched_files: false
           generate_release_notes: false
+          
