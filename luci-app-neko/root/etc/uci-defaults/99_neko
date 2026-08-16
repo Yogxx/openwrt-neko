@@ -15,19 +15,25 @@ uci -q get uhttpd.main.interpreter > /dev/null 2>&1 || {
 # Setup neko config default (hanya jika belum ada)
 uci -q get neko.cfg > /dev/null 2>&1 || {
     uci set neko.cfg=neko
-    uci set neko.cfg.enabled='0'
+    uci set neko.cfg.enabled='1'
     uci set neko.cfg.core_mode='mihomo'
     uci set neko.cfg.tcp_mode='redirect'
     uci set neko.cfg.udp_mode='tun'
     uci set neko.cfg.selected_config='/etc/neko/config/config.yaml'
     uci set neko.cfg.delay='2'
-    uci set neko.cfg.tun_interface 'Meta'
-    uci set neko.cfg.lan_interface 'br-lan'
-    uci set neko.cfg.port '9090'
+    uci set neko.cfg.tun_interface='Meta'
+    uci set neko.cfg.lan_interface='br-lan'
+    uci set neko.cfg.port='9090'
     uci set neko.cfg.show_ip='1'
     uci set neko.cfg.show_isp='1'
     uci set neko.cfg.show_luci='1'
     uci commit neko
+
+    if [ "$(uci -q get neko.cfg.enabled)" = "1" ]; then
+        /etc/init.d/neko enable
+    else
+        /etc/init.d/neko disable
+    fi
 }
 
 echo "[ $(date +%T) ] - Neko: uci-defaults done"
