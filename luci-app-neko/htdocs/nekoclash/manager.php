@@ -21,10 +21,16 @@ function is_path_allowed($file_path, $allowed_dirs) {
         if ($real === false) return false;
     }
     foreach ($allowed_dirs as $dir) {
-        if ($dir !== false && strpos($real, $dir) === 0) return true;
+        if ($dir === false) continue;
+        // Boundary-safe: harus sama persis dengan dir, atau di dalam dir (dir + separator)
+        // supaya "/etc/neko/config_backup" tidak ikut lolos saat allowed dir-nya "/etc/neko/config"
+        if ($real === $dir || strpos($real, $dir . DIRECTORY_SEPARATOR) === 0) return true;
     }
     return false;
 }
+
+// Ekstensi yang boleh disimpan/diupload — dipakai action_controller('save') dan up_controller()
+$GLOBALS['neko_allowed_ext'] = ['yaml', 'yml', 'json', 'txt', 'list'];
 
 function create_table($path) {
     $arr_table = array_merge(
@@ -111,7 +117,7 @@ function up_controller($dir, $allowed_dirs) {
         $target_file = $real_dir . "/" . basename($_FILES["file_upload"]["name"]);
         $fileType    = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
 
-        if (!in_array($fileType, ['yaml', 'yml', 'json', 'txt', 'list']))
+        if (!in_array($fileType, $GLOBALS['neko_allowed_ext']))
             throw new Exception("Only .yaml, .yml, .json, .txt, .list allowed");
 
         if (strpos(basename($target_file), ' ') !== false)
@@ -161,6 +167,11 @@ function action_controller($action_str, $allowed_dirs) {
             $content = $_POST['content'] ?? null;
             if ($content === null)
                 return ['status' => 'error', 'message' => 'Content missing'];
+
+            $ext = strtolower(pathinfo($file_path, PATHINFO_EXTENSION));
+            if (!in_array($ext, $GLOBALS['neko_allowed_ext']))
+                return ['status' => 'error', 'message' => 'File type not allowed'];
+
             file_put_contents($file_path, $content);
             return ['status' => 'success', 'message' => 'File saved'];
 

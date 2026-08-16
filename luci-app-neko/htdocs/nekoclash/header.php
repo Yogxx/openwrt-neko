@@ -33,6 +33,5 @@
         document.documentElement.setAttribute('data-bs-theme', theme);
       })();
     </script>
-    </script>
 
   </head>

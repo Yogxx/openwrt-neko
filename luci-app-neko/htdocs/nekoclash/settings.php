@@ -50,6 +50,16 @@ if(isset($_POST['show_luci'])){
     shell_exec("uci set neko.cfg.show_luci='".intval($_POST['show_luci'])."' && uci commit neko");
 }
 
+if(isset($_POST['auto_start'])){
+    $val = intval($_POST['auto_start']);
+    shell_exec("uci set neko.cfg.enabled=" . escapeshellarg($val) . " && uci commit neko");
+    if ($val === 1) {
+        shell_exec("/etc/init.d/neko enable 2>/dev/null");
+    } else {
+        shell_exec("/etc/init.d/neko disable 2>/dev/null");
+    }
+}
+
 function patch_mihomo_config($config_file, $tcp_mode, $udp_mode) {
     if (!file_exists($config_file)) return;
 
@@ -136,6 +146,8 @@ $current_core = trim(shell_exec("uci -q get neko.cfg.core_mode"));
 $show_ip      = trim(shell_exec("uci -q get neko.cfg.show_ip"));
 $show_isp     = trim(shell_exec("uci -q get neko.cfg.show_isp"));
 $show_luci    = trim(shell_exec("uci -q get neko.cfg.show_luci"));
+$auto_start   = trim(shell_exec("uci -q get neko.cfg.enabled")) ?: '0';
+$is_enabled   = trim(shell_exec("/etc/init.d/neko enabled 2>/dev/null; echo $?")) === '0';
 
 ?>
 
@@ -222,6 +234,23 @@ $show_luci    = trim(shell_exec("uci -q get neko.cfg.show_luci"));
                         <option value="1" <?php if($show_luci=='1') echo 'selected'; ?>>Enable</option>
                         <option value="0" <?php if($show_luci=='0') echo 'selected'; ?>>Disable</option>
                     </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Auto Start on Boot:</label>
+                    <select name="auto_start" class="form-select">
+                        <option value="1" <?php if($auto_start=='1') echo 'selected'; ?>>Enable</option>
+                        <option value="0" <?php if($auto_start=='0') echo 'selected'; ?>>Disable</option>
+                    </select>
+                    <div class="form-text mt-1">
+                        <i data-feather="info" class="feather-xs me-1"></i>
+                        Status initd:
+                        <?php if($is_enabled): ?>
+                            <span class="badge bg-success">Enabled</span>
+                        <?php else: ?>
+                            <span class="badge bg-secondary">Disabled</span>
+                        <?php endif; ?>
+                    </div>
                 </div>
 
                 <div class="mb-3">

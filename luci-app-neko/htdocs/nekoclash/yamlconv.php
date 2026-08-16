@@ -3,8 +3,52 @@
 include './cfg.php';
 $tmp_dir = $neko_www . "/lib";
 
+// Anti-SSRF: hanya izinkan http/https ke host publik.
+// Blokir loopback, private range, link-local (termasuk 169.254.169.254 metadata endpoint),
+// dan gagal-aman kalau hostname tidak bisa di-resolve.
+function is_url_ssrf_safe($url) {
+    $parts = parse_url($url);
+    if (!$parts || empty($parts['scheme']) || empty($parts['host'])) return false;
+
+    $scheme = strtolower($parts['scheme']);
+    if (!in_array($scheme, ['http', 'https'])) return false;
+
+    $host = $parts['host'];
+
+    // Resolve ke IP (dukung host yang sudah berupa IP maupun domain)
+    if (filter_var($host, FILTER_VALIDATE_IP)) {
+        $ips = [$host];
+    } else {
+        $records = @dns_get_record($host, DNS_A + DNS_AAAA) ?: [];
+        $ips = array_merge(array_column($records, 'ip'), array_column($records, 'ipv6'));
+        $ips = array_values(array_filter($ips));
+        if (empty($ips)) {
+            $single = gethostbyname($host);
+            if ($single !== $host) $ips = [$single];
+        }
+    }
+
+    if (empty($ips)) return false; // gagal resolve -> tolak, jangan lanjut ke curl
+
+    foreach ($ips as $ip) {
+        $is_private = !filter_var(
+            $ip,
+            FILTER_VALIDATE_IP,
+            FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
+        );
+        if ($is_private) return false;
+    }
+
+    return true;
+}
+
 if(isset($_POST['url'])) {
     $dt = $_POST['url'];
+
+    if (!is_url_ssrf_safe($dt)) {
+        echo "ERROR: URL not allowed (invalid scheme or points to a private/internal address)";
+        exit;
+    }
 
     if (strpos($dt, '/sub/') !== false) {
         $ch = curl_init();
@@ -12,6 +56,10 @@ if(isset($_POST['url'])) {
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, false); // cegah redirect ke IP internal
+        curl_setopt($ch, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
         $content = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
