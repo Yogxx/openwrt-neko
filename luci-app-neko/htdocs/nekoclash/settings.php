@@ -65,6 +65,7 @@ function patch_mihomo_config($config_file, $tcp_mode, $udp_mode) {
 
     $need_tun        = ($tcp_mode === 'tun' || $udp_mode === 'tun');
     $need_redir_port = ($tcp_mode === 'redirect');
+    $need_tproxy_port = ($tcp_mode === 'tproxy' || $udp_mode === 'tproxy');
     $f = escapeshellarg($config_file);
 
     $tun_enable = $need_tun ? 'true' : 'false';
@@ -78,6 +79,12 @@ function patch_mihomo_config($config_file, $tcp_mode, $udp_mode) {
     } else {
         shell_exec("sed -i 's/^redir-port:/#redir-port:/' $f");
     }
+
+    if ($need_tproxy_port) {
+        shell_exec("sed -i 's/^#tproxy-port:/tproxy-port:/' $f");
+    } else {
+        shell_exec("sed -i 's/^tproxy-port:/#tproxy-port:/' $f");
+    }
 }
 
 function patch_singbox_config($config_file, $tcp_mode, $udp_mode) {
@@ -90,7 +97,7 @@ function patch_singbox_config($config_file, $tcp_mode, $udp_mode) {
     $need_tproxy   = ($tcp_mode === 'tproxy' || $udp_mode === 'tproxy');
     $need_tun      = ($tcp_mode === 'tun' || $udp_mode === 'tun');
 
-    foreach ($json['inbounds'] as &$ib) {
+    foreach (($json['inbounds'] ?? []) as &$ib) {
         $type = $ib['type'] ?? '';
         if ($type === 'redirect') {
             if (!$need_redirect) $ib['disabled'] = true;
@@ -210,7 +217,7 @@ $is_enabled   = trim(shell_exec("/etc/init.d/neko enabled 2>/dev/null; echo $?")
         </div>
         <div class="card-body">
 
-            <form action="settings.php" method="post">
+            <form action="settings.php" method="post" id="modeSettingsForm">
 
                 <div class="mb-3">
                     <label class="form-label">Show IP Address:</label>
@@ -255,7 +262,7 @@ $is_enabled   = trim(shell_exec("/etc/init.d/neko enabled 2>/dev/null; echo $?")
 
                 <div class="mb-3">
                     <label class="form-label">TCP Mode:</label>
-                    <select name="tcp_mode" class="form-select"
+                    <select name="tcp_mode" id="tcp_mode_select" class="form-select"
                         <?php if($is_running) echo 'disabled style="opacity:.6;cursor:not-allowed;"'; ?>>
                         <option value="redirect" <?php if($tcp_mode=='redirect') echo 'selected'; ?>>Redirect Mode</option>
                         <option value="tproxy"   <?php if($tcp_mode=='tproxy')   echo 'selected'; ?>>TPROXY Mode</option>
@@ -266,7 +273,7 @@ $is_enabled   = trim(shell_exec("/etc/init.d/neko enabled 2>/dev/null; echo $?")
 
                 <div class="mb-3">
                     <label class="form-label">UDP Mode:</label>
-                    <select name="udp_mode" class="form-select"
+                    <select name="udp_mode" id="udp_mode_select" class="form-select"
                         <?php if($is_running) echo 'disabled style="opacity:.6;cursor:not-allowed;"'; ?>>
                         <option value="tun"      <?php if($udp_mode=='tun')     echo 'selected'; ?>>TUN Mode</option>
                         <option value="tproxy"   <?php if($udp_mode=='tproxy')  echo 'selected'; ?>>TPROXY Mode</option>
